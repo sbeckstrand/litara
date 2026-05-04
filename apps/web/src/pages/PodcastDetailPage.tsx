@@ -19,6 +19,7 @@ import {
   Tooltip,
   Radio,
   Progress,
+  TextInput,
 } from '@mantine/core';
 import {
   IconMicrophone,
@@ -32,7 +33,9 @@ import {
   IconRefresh,
   IconTrash,
   IconArrowLeft,
+  IconExternalLink,
 } from '@tabler/icons-react';
+import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { api } from '../utils/api';
@@ -129,6 +132,10 @@ export function PodcastDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteOption, setDeleteOption] = useState<'keep' | 'delete'>('keep');
   const [deleting, setDeleting] = useState(false);
+  const [linkFeedOpen, setLinkFeedOpen] = useState(false);
+  const [linkFeedUrl, setLinkFeedUrl] = useState('');
+  const [linkFeedError, setLinkFeedError] = useState('');
+  const [linkingFeed, setLinkingFeed] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -204,6 +211,32 @@ export function PodcastDetailPage() {
       navigate('/podcasts');
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleLinkFeed() {
+    if (!podcast || !linkFeedUrl.trim()) return;
+    setLinkingFeed(true);
+    setLinkFeedError('');
+    try {
+      const res = await api.post<PodcastDetail>(
+        `/podcasts/${podcast.id}/link-feed`,
+        { feedUrl: linkFeedUrl.trim() },
+      );
+      setPodcast(res.data);
+      setLinkFeedOpen(false);
+      setLinkFeedUrl('');
+      const epRes = await api.get<{ episodes: Episode[] }>(
+        `/podcasts/${podcast.id}/episodes`,
+      );
+      setEpisodes(epRes.data.episodes);
+    } catch (e) {
+      const msg = axios.isAxiosError(e) && e.response?.data?.message;
+      setLinkFeedError(
+        typeof msg === 'string' ? msg : 'Failed to link RSS feed.',
+      );
+    } finally {
+      setLinkingFeed(false);
     }
   }
 
@@ -314,19 +347,29 @@ export function PodcastDetailPage() {
               >
                 <IconSettings size={18} />
               </ActionIcon>
-              <Tooltip label="Unsubscribe">
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  size="lg"
-                  onClick={() => {
-                    setDeleteOption('keep');
-                    setDeleteOpen(true);
-                  }}
+              {podcast.subscribed ? (
+                <Tooltip label="Unsubscribe">
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="lg"
+                    onClick={() => {
+                      setDeleteOption('keep');
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    <IconTrash size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              ) : podcast.feedUrl?.startsWith('local://') ? (
+                <Button
+                  size="sm"
+                  leftSection={<IconExternalLink size={14} />}
+                  onClick={() => setLinkFeedOpen(true)}
                 >
-                  <IconTrash size={18} />
-                </ActionIcon>
-              </Tooltip>
+                  Subscribe to RSS Feed
+                </Button>
+              ) : null}
             </Group>
           </Group>
         </Paper>
@@ -469,6 +512,46 @@ export function PodcastDetailPage() {
               Unsubscribe
             </Button>
           </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={linkFeedOpen}
+        onClose={() => {
+          if (!linkingFeed) {
+            setLinkFeedOpen(false);
+            setLinkFeedUrl('');
+            setLinkFeedError('');
+          }
+        }}
+        title="Subscribe to RSS Feed"
+        size="sm"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Link an RSS feed to this podcast. Existing downloaded episodes will
+            be kept. New episodes from the feed will be added.
+          </Text>
+          <TextInput
+            label="RSS Feed URL"
+            placeholder="https://example.com/podcast.rss"
+            required
+            value={linkFeedUrl}
+            onChange={(e) => setLinkFeedUrl(e.currentTarget.value)}
+            leftSection={<IconExternalLink size={14} />}
+          />
+          {linkFeedError && (
+            <Alert color="red" icon={<IconAlertTriangle size={14} />}>
+              {linkFeedError}
+            </Alert>
+          )}
+          <Button
+            onClick={() => void handleLinkFeed()}
+            loading={linkingFeed}
+            disabled={!linkFeedUrl.trim()}
+          >
+            Subscribe
+          </Button>
         </Stack>
       </Modal>
 
