@@ -12,7 +12,7 @@ import {
 import { IconUser } from '@tabler/icons-react';
 import { api } from '../utils/api';
 import { PageHeader } from '../components/PageHeader';
-import type { AuthorListItem } from '../components/AuthorDetailModal.types';
+import type { AuthorListItem } from '../components/AuthorDetailPage.types';
 
 const CARD_W = 140;
 const PHOTO_H = 140;

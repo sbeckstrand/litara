@@ -24,9 +24,9 @@ import type {
   BookDetail,
   MetadataResult,
   MetadataSearchResult,
-} from './BookDetailModal.types';
+} from './BookDetailPage.types';
 import { MetadataComparisonTable } from './MetadataComparisonTable';
-import { isValidIsbn13, isValidIsbn10 } from './BookDetailModal.utils';
+import { isValidIsbn13, isValidIsbn10 } from './BookDetailPage.utils';
 import { buildRows, buildApplyPayload } from './metadataApply.shared';
 
 interface SearchMetadataTabProps {

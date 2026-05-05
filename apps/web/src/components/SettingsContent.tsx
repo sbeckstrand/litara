@@ -42,7 +42,7 @@ interface RecipientEmail {
   createdAt: string;
 }
 
-export function RecipientEmailsSection() {
+function RecipientEmailsSection() {
   const [emails, setEmails] = useState<RecipientEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [addEmail, setAddEmail] = useState('');
@@ -220,7 +220,7 @@ interface KoReaderCredential {
   createdAt: string;
 }
 
-export function KoReaderSyncSection() {
+function KoReaderSyncSection() {
   const [userSettings, setUserSettings] = useAtom(userSettingsAtom);
   const [credential, setCredential] = useState<KoReaderCredential | null>(null);
   const [loading, setLoading] = useState(true);

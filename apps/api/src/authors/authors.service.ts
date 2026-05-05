@@ -119,7 +119,15 @@ export class AuthorsService {
       return this.findOne(id);
     }
 
-    const data = await this.fetchAuthorDataFromOpenLibrary(author.name);
+    let data: AuthorEnrichmentData;
+    try {
+      data = await this.fetchAuthorDataFromOpenLibrary(author.name);
+    } catch (err) {
+      this.logger.warn(
+        `Failed to fetch author data for "${author.name}": ${(err as Error).message}`,
+      );
+      data = { photoData: null, biography: null, goodreadsId: null };
+    }
     await this.saveEnrichmentData(id, data);
     return this.findOne(id);
   }

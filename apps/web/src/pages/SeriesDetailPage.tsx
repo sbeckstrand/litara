@@ -30,7 +30,7 @@ import {
   IconUser,
 } from '@tabler/icons-react';
 import { api } from '../utils/api';
-import type { AuthorDetail } from '../components/AuthorDetailModal.types';
+import type { AuthorDetail } from '../components/AuthorDetailPage.types';
 
 interface SeriesAuthorItem {
   id: string;

@@ -11,9 +11,9 @@ import {
   Textarea,
   SimpleGrid,
 } from '@mantine/core';
-import type { EditedFields } from './BookDetailModal.types';
-import { ALL_LOCKABLE_FIELDS } from './BookDetailModal.types';
-import { LockButton } from './BookDetailModal.shared';
+import type { EditedFields } from './BookDetailPage.types';
+import { ALL_LOCKABLE_FIELDS } from './BookDetailPage.types';
+import { LockButton } from './BookDetailPage.shared';
 
 interface EditMetadataTabProps {
   editedFields: EditedFields;

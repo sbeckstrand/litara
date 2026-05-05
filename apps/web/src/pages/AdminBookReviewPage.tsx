@@ -34,7 +34,7 @@ import type {
   EditedFields,
   BookDetail,
   MetadataResult,
-} from '../components/BookDetailModal.types';
+} from '../components/BookDetailPage.types';
 
 interface PendingBook {
   id: string;

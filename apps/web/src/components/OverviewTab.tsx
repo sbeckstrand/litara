@@ -26,9 +26,9 @@ import {
 } from '@tabler/icons-react';
 import { useSetAtom, useAtomValue } from 'jotai';
 import { api } from '../utils/api';
-import type { BookDetail } from './BookDetailModal.types';
-import { FileRow, DetailRow } from './BookDetailModal.shared';
-import { formatBytesNum } from './BookDetailModal.utils';
+import type { BookDetail } from './BookDetailPage.types';
+import { FileRow, DetailRow } from './BookDetailPage.shared';
+import { formatBytesNum } from './BookDetailPage.utils';
 import { audiobookPlayerAtom } from '../store/atoms';
 
 function formatDuration(seconds: number): string {

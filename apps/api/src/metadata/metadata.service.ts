@@ -14,7 +14,7 @@ export enum MetadataProvider {
   Hardcover = 'hardcover',
 }
 
-export const PROVIDERS_CONFIG = [
+const PROVIDERS_CONFIG = [
   {
     id: MetadataProvider.GoogleBooks,
     label: 'Google Books',

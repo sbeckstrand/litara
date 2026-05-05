@@ -1,8 +1,8 @@
 import { Group, Badge, Text, ActionIcon, Box, Tooltip } from '@mantine/core';
 import { IconDownload, IconLock, IconLockOpen } from '@tabler/icons-react';
-import type { BookFile } from './BookDetailModal.types';
-import { FORMAT_COLORS } from './BookDetailModal.types';
-import { formatBytes } from './BookDetailModal.utils';
+import type { BookFile } from './BookDetailPage.types';
+import { FORMAT_COLORS } from './BookDetailPage.types';
+import { formatBytes } from './BookDetailPage.utils';
 
 export function FileRow({
   file,

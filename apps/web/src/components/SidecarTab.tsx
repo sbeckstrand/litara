@@ -17,7 +17,7 @@ import {
 } from '@tabler/icons-react';
 import { pushToast } from '../utils/toast';
 import { api } from '../utils/api';
-import type { BookDetail, MetadataResult } from './BookDetailModal.types';
+import type { BookDetail, MetadataResult } from './BookDetailPage.types';
 import { MetadataComparisonTable } from './MetadataComparisonTable';
 import { buildRows, buildApplyPayload } from './metadataApply.shared';
 
