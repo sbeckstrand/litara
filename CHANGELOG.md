@@ -1,3 +1,15 @@
+# [1.36.0](https://github.com/litara-app/litara/compare/v1.35.0...v1.36.0) (2026-05-09)
+
+
+### Bug Fixes
+
+* podcast tweaks to subscription ([ea0ce10](https://github.com/litara-app/litara/commit/ea0ce105d30bf310ff8a56a02e6c362801662568))
+
+
+### Features
+
+* adding in podcast enable to setup stepper ([8850175](https://github.com/litara-app/litara/commit/8850175ffb3151e3cb00963c6924bd41f9b58b49))
+
 # [1.35.0](https://github.com/litara-app/litara/compare/v1.34.1...v1.35.0) (2026-05-04)
 
 
