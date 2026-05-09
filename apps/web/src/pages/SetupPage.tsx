@@ -27,6 +27,7 @@ import {
   IconAlertCircle,
   IconInfoCircle,
   IconCircleCheck,
+  IconHeadphones,
 } from '@tabler/icons-react';
 import { api } from '../utils/api';
 import { type MetadataProviderStatus } from '../components/MetadataSourcesSection';
@@ -73,6 +74,11 @@ export function SetupPage() {
   // Step 4 — KOReader sync
   const [koReaderEnabled, setKoReaderEnabled] = useState(false);
   const [koReaderSaving, setKoReaderSaving] = useState(false);
+
+  // Step 5 — Podcasts
+  const [podcastsEnabled, setPodcastsEnabled] = useState(false);
+  const [podcastsSaving, setPodcastsSaving] = useState(false);
+  const [podcastsError, setPodcastsError] = useState(false);
 
   const fetchDiskStatus = () => {
     setDiskLoading(true);
@@ -131,7 +137,26 @@ export function SetupPage() {
         .then((r) => setKoReaderEnabled(r.data.enabled))
         .catch(() => {});
     }
+    if (active === 4) {
+      api
+        .get<{ enabled: boolean }>('/podcasts/settings')
+        .then((r) => setPodcastsEnabled(r.data.enabled))
+        .catch(() => {});
+    }
   }, [active]);
+
+  const handlePodcastsToggle = async (checked: boolean) => {
+    setPodcastsSaving(true);
+    setPodcastsError(false);
+    try {
+      await api.patch('/podcasts/settings', { enabled: checked });
+      setPodcastsEnabled(checked);
+    } catch {
+      setPodcastsError(true);
+    } finally {
+      setPodcastsSaving(false);
+    }
+  };
 
   const handleKoReaderToggle = async (checked: boolean) => {
     setKoReaderSaving(true);
@@ -575,6 +600,56 @@ export function SetupPage() {
                     and enter your Litara URL as the custom server. Users must
                     first create their KOReader credentials in{' '}
                     <strong>Settings → KOReader Sync</strong> before connecting.
+                  </Text>
+                </Alert>
+              )}
+
+              <Button
+                fullWidth
+                leftSection={<IconCheck size={16} />}
+                onClick={() => setActive(4)}
+              >
+                Continue
+              </Button>
+            </Stack>
+          </Stepper.Step>
+
+          {/* ── Step 5: Podcasts ── */}
+          <Stepper.Step label="Podcasts" description="Enable subscriptions">
+            <Stack mt="md" gap="md">
+              <Text size="sm" c="dimmed">
+                Litara can subscribe to podcast RSS feeds and automatically
+                download episodes for offline archiving and playback. You can
+                enable or disable this at any time in Admin Settings.
+              </Text>
+
+              <Switch
+                label="Enable podcasts"
+                checked={podcastsEnabled}
+                onChange={(e) =>
+                  void handlePodcastsToggle(e.currentTarget.checked)
+                }
+                disabled={podcastsSaving}
+              />
+
+              {podcastsError && (
+                <Alert color="red" icon={<IconAlertCircle size={16} />}>
+                  Failed to save podcast setting. You can change it later in
+                  Admin Settings.
+                </Alert>
+              )}
+
+              {podcastsEnabled && (
+                <Alert
+                  color="blue"
+                  icon={<IconHeadphones size={16} />}
+                  title="Podcasts enabled"
+                >
+                  <Text size="sm">
+                    Episode files are stored at the path configured by{' '}
+                    <code>PODCAST_STORAGE_PATH</code> (default:{' '}
+                    <code>/data/podcasts</code>). Subscribe to feeds from the
+                    Podcasts page once you're logged in.
                   </Text>
                 </Alert>
               )}
