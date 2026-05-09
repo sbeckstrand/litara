@@ -102,6 +102,13 @@ export class PodcastController {
     return this.podcastService.findAll();
   }
 
+  @Post(':id/link-feed')
+  @UseGuards(JwtAuthGuard)
+  @ApiOkResponse({ type: PodcastDto })
+  linkFeed(@Param('id') id: string, @Body() dto: CreatePodcastDto) {
+    return this.podcastService.linkFeed(id, dto.feedUrl);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ type: PodcastDto })

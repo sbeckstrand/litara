@@ -132,6 +132,58 @@ export class PodcastService {
     return this.toPodcastDto(podcast, podcast._count.episodes);
   }
 
+  async linkFeed(id: string, feedUrl: string) {
+    await this.assertEnabled();
+
+    const podcast = await this.prisma.podcast.findUnique({
+      where: { id },
+      include: { _count: { select: { episodes: true } } },
+    });
+    if (!podcast) throw new NotFoundException('Podcast not found');
+    if (!podcast.feedUrl.startsWith('local://')) {
+      throw new BadRequestException('Podcast is already linked to an RSS feed');
+    }
+
+    const conflict = await this.prisma.podcast.findUnique({
+      where: { feedUrl },
+    });
+    if (conflict && conflict.id !== id) {
+      throw new ConflictException('Already subscribed to this feed');
+    }
+
+    let feed: Awaited<ReturnType<typeof this.parser.parseURL>>;
+    try {
+      feed = await this.parser.parseURL(feedUrl);
+    } catch (err) {
+      throw new BadRequestException(
+        `Could not fetch or parse feed: ${(err as Error).message}`,
+      );
+    }
+
+    const now = new Date();
+    const updated = await this.prisma.podcast.update({
+      where: { id },
+      data: {
+        feedUrl,
+        title: feed.title ?? podcast.title,
+        description: feed.description ?? podcast.description,
+        artworkUrl: feed.image?.url ?? podcast.artworkUrl,
+        author: feed.itunes?.author ?? podcast.author,
+        websiteUrl: feed.link ?? podcast.websiteUrl,
+        subscribed: true,
+        lastRefreshedAt: now,
+        nextRefreshAt: new Date(
+          now.getTime() + podcast.refreshIntervalMinutes * 60 * 1000,
+        ),
+      },
+      include: { _count: { select: { episodes: true } } },
+    });
+
+    void this.syncEpisodes(id, feed.items ?? []);
+
+    return this.toPodcastDto(updated, updated._count.episodes);
+  }
+
   async getEpisodes(
     podcastId: string,
     userId: string,
