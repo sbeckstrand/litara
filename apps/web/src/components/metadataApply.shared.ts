@@ -1,6 +1,6 @@
-import type { BookDetail, MetadataResult } from './BookDetailModal.types';
+import type { BookDetail, MetadataResult } from './BookDetailPage.types';
 import type { ComparisonRow } from './MetadataComparisonTable';
-import { isValidIsbn13, isValidIsbn10 } from './BookDetailModal.utils';
+import { isValidIsbn13, isValidIsbn10 } from './BookDetailPage.utils';
 
 export function buildRows(
   detail: BookDetail,

@@ -24,7 +24,7 @@ import {
 import type {
   AuthorBook,
   AuthorDetail,
-} from '../components/AuthorDetailModal.types';
+} from '../components/AuthorDetailPage.types';
 import { api } from '../utils/api';
 import { pushToast } from '../utils/toast';
 
@@ -111,6 +111,7 @@ export function AuthorDetailPage() {
 
   const [detail, setDetail] = useState<AuthorDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [enriching, setEnriching] = useState(false);
 
   const user = (() => {
     try {
@@ -141,6 +142,7 @@ export function AuthorDetailPage() {
 
   function handleEnrichPhoto() {
     if (!authorId) return;
+    setEnriching(true);
     api
       .post<AuthorDetail>(`/authors/${authorId}/enrich?force=true`)
       .then((res) => {
@@ -158,7 +160,8 @@ export function AuthorDetailPage() {
           'Failed to enrich author photo — check API logs for the URL',
           { title: 'Enrichment failed', color: 'red' },
         );
-      });
+      })
+      .finally(() => setEnriching(false));
   }
 
   return (
@@ -251,6 +254,7 @@ export function AuthorDetailPage() {
                     size="xs"
                     variant="light"
                     onClick={handleEnrichPhoto}
+                    loading={enriching}
                     style={{ alignSelf: 'flex-start' }}
                   >
                     Enrich Author Data

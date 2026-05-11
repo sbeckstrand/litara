@@ -24,7 +24,7 @@ import {
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
-import { FORMAT_COLORS } from './BookDetailModal.types';
+import { FORMAT_COLORS } from './BookDetailPage.types';
 
 export interface BookCardData {
   id: string;

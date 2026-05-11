@@ -58,9 +58,9 @@ import type {
   EditedFields,
   Library,
   Shelf,
-} from '../components/BookDetailModal.types';
-import { FORMAT_COLORS } from '../components/BookDetailModal.types';
-import { formatBytes } from '../components/BookDetailModal.utils';
+} from '../components/BookDetailPage.types';
+import { FORMAT_COLORS } from '../components/BookDetailPage.types';
+import { formatBytes } from '../components/BookDetailPage.utils';
 import { OverviewTab } from '../components/OverviewTab';
 import { EditMetadataTab } from '../components/EditMetadataTab';
 import { SearchMetadataTab } from '../components/SearchMetadataTab';
@@ -1014,7 +1014,7 @@ export function BookDetailPage() {
                     onSearch={(provider, params) =>
                       api
                         .get<
-                          import('../components/BookDetailModal.types').MetadataResult[]
+                          import('../components/BookDetailPage.types').MetadataResult[]
                         >(
                           `/books/${detail.id}/search-metadata?provider=${provider}&${params.toString()}`,
                         )
