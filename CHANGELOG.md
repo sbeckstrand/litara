@@ -1,3 +1,10 @@
+## [1.36.1](https://github.com/litara-app/litara/compare/v1.36.0...v1.36.1) (2026-05-11)
+
+
+### Bug Fixes
+
+* fixing author page timeout crash, file cleanup ([6f68217](https://github.com/litara-app/litara/commit/6f682171aba752c7f95d529fe18311a868ad7c5f))
+
 # [1.36.0](https://github.com/litara-app/litara/compare/v1.35.0...v1.36.0) (2026-05-09)
 
 
