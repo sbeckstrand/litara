@@ -39,7 +39,7 @@ Re-running enrichment always uses `force=true`, so it overwrites any previously 
 
 ### Enriching all authors at once
 
-1. Go to **Admin Settings → General**.
+1. Go to **Admin Settings → Metadata**.
 2. Scroll to the **Author Data Enrichment** section.
 3. Click **Enrich All Author Data**.
 

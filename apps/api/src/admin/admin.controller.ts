@@ -17,6 +17,7 @@ import {
 import type { Response } from 'express';
 import {
   ApiBearerAuth,
+  ApiAcceptedResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
@@ -199,7 +200,9 @@ export class AdminController {
 
   @Post('series/enrich-all')
   @HttpCode(HttpStatus.ACCEPTED)
-  @ApiOkResponse()
+  @ApiAcceptedResponse({
+    schema: { properties: { taskId: { type: 'string' } } },
+  })
   bulkEnrichSeries() {
     return this.adminService.bulkEnrichSeries();
   }
