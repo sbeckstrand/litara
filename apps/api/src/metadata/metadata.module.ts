@@ -18,6 +18,11 @@ import { HardcoverService } from './providers/hardcover.service';
     GoodreadsService,
     HardcoverService,
   ],
-  exports: [MetadataService, OpenLibraryService],
+  exports: [
+    MetadataService,
+    OpenLibraryService,
+    HardcoverService,
+    GoodreadsService,
+  ],
 })
 export class MetadataModule {}

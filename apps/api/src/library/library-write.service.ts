@@ -345,6 +345,13 @@ export class LibraryWriteService {
           sequence: pending.seriesPosition ?? null,
         },
       });
+
+      // Auto-resolve: delete any SeriesSlot at the same sequence position
+      if (pending.seriesPosition !== null) {
+        await this.prisma.seriesSlot.deleteMany({
+          where: { seriesId: series.id, sequence: pending.seriesPosition },
+        });
+      }
     }
 
     // Upsert genres

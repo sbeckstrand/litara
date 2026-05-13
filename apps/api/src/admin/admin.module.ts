@@ -5,6 +5,7 @@ import { MetadataModule } from '../metadata/metadata.module';
 import { DiskWriteGuardModule } from '../common/disk-write-guard.module';
 import { BooksModule } from '../books/books.module';
 import { LibraryModule } from '../library/library.module';
+import { SeriesModule } from '../series/series.module';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 
@@ -16,6 +17,7 @@ import { AdminController } from './admin.controller';
     DiskWriteGuardModule,
     BooksModule,
     LibraryModule,
+    SeriesModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

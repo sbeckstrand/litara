@@ -17,6 +17,7 @@ import {
 import type { Response } from 'express';
 import {
   ApiBearerAuth,
+  ApiAcceptedResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
@@ -195,6 +196,15 @@ export class AdminController {
   @ApiOkResponse()
   setShelfmarkSettings(@Body() body: { shelfmarkUrl?: string | null }) {
     return this.adminService.setShelfmarkSettings(body.shelfmarkUrl ?? null);
+  }
+
+  @Post('series/enrich-all')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiAcceptedResponse({
+    schema: { properties: { taskId: { type: 'string' } } },
+  })
+  bulkEnrichSeries() {
+    return this.adminService.bulkEnrichSeries();
   }
 
   @Post('sidecar/bulk-write')

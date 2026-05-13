@@ -21,6 +21,7 @@ import {
 import { DiskWriteGuardService } from '../common/disk-write-guard.service';
 import { BooksService } from '../books/books.service';
 import { LibraryWriteService } from '../library/library-write.service';
+import { SeriesService } from '../series/series.service';
 
 const BULK_SIDECAR_CONCURRENCY = 10;
 
@@ -58,6 +59,7 @@ export class AdminService {
     private readonly diskWriteGuard: DiskWriteGuardService,
     private readonly booksService: BooksService,
     private readonly libraryWriteService: LibraryWriteService,
+    private readonly seriesService: SeriesService,
     private readonly config: ConfigService,
   ) {}
 
@@ -264,6 +266,95 @@ export class AdminService {
       });
     }
     return { shelfmarkUrl: value };
+  }
+
+  async bulkEnrichSeries(): Promise<{ taskId: string }> {
+    const task = await this.prisma.task.create({
+      data: {
+        type: 'SERIES_BULK_ENRICH',
+        status: 'PENDING',
+        payload: JSON.stringify({
+          total: 0,
+          completed: 0,
+          failed: 0,
+          currentSeries: null,
+        }),
+      },
+    });
+
+    void this.runBulkEnrichSeries(task.id);
+
+    return { taskId: task.id };
+  }
+
+  private async runBulkEnrichSeries(taskId: string): Promise<void> {
+    const allSeries = await this.prisma.series.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    const total = allSeries.length;
+    let completed = 0;
+    let failed = 0;
+
+    await this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: 'PROCESSING',
+        payload: JSON.stringify({
+          total,
+          completed,
+          failed,
+          currentSeries: null,
+        }),
+      },
+    });
+
+    for (const series of allSeries) {
+      await this.prisma.task.update({
+        where: { id: taskId },
+        data: {
+          payload: JSON.stringify({
+            total,
+            completed,
+            failed,
+            currentSeries: series.name,
+          }),
+        },
+      });
+
+      try {
+        await this.seriesService.enrichSeries(series.id);
+        completed++;
+      } catch {
+        failed++;
+      }
+
+      await this.prisma.task.update({
+        where: { id: taskId },
+        data: {
+          payload: JSON.stringify({
+            total,
+            completed,
+            failed,
+            currentSeries: series.name,
+          }),
+        },
+      });
+    }
+
+    await this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: 'COMPLETED',
+        payload: JSON.stringify({
+          total,
+          completed,
+          failed,
+          currentSeries: null,
+          summary: `Done. Enriched: ${completed}, Failed: ${failed}`,
+        }),
+      },
+    });
   }
 
   async bulkWriteSidecars(): Promise<{ taskId: string }> {

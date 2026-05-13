@@ -32,7 +32,6 @@ import {
   IconUserPlus,
   IconCopy,
   IconLock,
-  IconUsers,
   IconCode,
   IconFolderSearch,
   IconDownload,
@@ -624,69 +623,6 @@ function KoReaderSyncSection() {
             Run MD5 backfill
           </Button>
         </Stack>
-      </Stack>
-    </Paper>
-  );
-}
-
-function AuthorPhotoEnrichmentSection() {
-  const [enriching, setEnriching] = useState(false);
-  const [result, setResult] = useState<{
-    taskId: string;
-    total: number;
-  } | null>(null);
-  const [error, setError] = useState(false);
-
-  async function handleEnrichAll() {
-    setEnriching(true);
-    setResult(null);
-    setError(false);
-    try {
-      const res = await api.post<{ taskId: string; total: number }>(
-        '/authors/enrich',
-      );
-      setResult(res.data);
-    } catch {
-      setError(true);
-    } finally {
-      setEnriching(false);
-    }
-  }
-
-  return (
-    <Paper withBorder p="md" radius="md">
-      <Stack gap="sm">
-        <Title order={4}>Author Data Enrichment</Title>
-        <Text size="sm" c="dimmed">
-          Fetch author photos and biographies from Open Library for all authors
-          that are missing either. Runs as a background task — progress is
-          visible in the Tasks tab.
-        </Text>
-
-        {result && (
-          <Alert icon={<IconCheck size={16} />} color="green" variant="light">
-            Enrichment queued for {result.total} author
-            {result.total !== 1 ? 's' : ''} (task ID: {result.taskId})
-          </Alert>
-        )}
-        {error && (
-          <Alert
-            icon={<IconAlertTriangle size={16} />}
-            color="red"
-            variant="light"
-          >
-            Failed to start enrichment. Check server logs for details.
-          </Alert>
-        )}
-
-        <Button
-          leftSection={<IconUsers size={16} />}
-          onClick={() => void handleEnrichAll()}
-          loading={enriching}
-          w="fit-content"
-        >
-          Enrich All Author Data
-        </Button>
       </Stack>
     </Paper>
   );
@@ -1670,7 +1606,6 @@ export function GeneralTab({
       <ShelfmarkSettingsSection />
       <PodcastsSettingsSection />
       <LibraryScanSection onTaskStarted={onTaskStarted} />
-      <AuthorPhotoEnrichmentSection />
       <DiskSettingsSection />
       {import.meta.env.DEV && <DevToolsSection />}
       <LibraryManagementSection onTaskStarted={onTaskStarted} />

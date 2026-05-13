@@ -143,6 +143,23 @@ model Series {
   updatedAt   DateTime @updatedAt
 
   books SeriesBook[]
+  slots SeriesSlot[]
+}
+
+model SeriesSlot {
+  id         String   @id @default(uuid())
+  seriesId   String
+  series     Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  title      String
+  sequence   Float?
+  authors    String[]
+  coverData  Bytes?
+  provider   String
+  externalId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([seriesId, sequence])
 }
 
 model SeriesBook {

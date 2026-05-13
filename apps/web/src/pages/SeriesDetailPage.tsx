@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Paper,
@@ -18,7 +18,12 @@ import {
   ActionIcon,
   Anchor,
   Stack,
+  Popover,
+  CopyButton,
+  Tooltip,
+  Switch,
 } from '@mantine/core';
+import { pushToast } from '../utils/toast';
 import {
   IconBook2,
   IconCalendar,
@@ -28,6 +33,9 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconUser,
+  IconRefresh,
+  IconCopy,
+  IconCheck,
 } from '@tabler/icons-react';
 import { api } from '../utils/api';
 import type { AuthorDetail } from '../components/AuthorDetailPage.types';
@@ -49,12 +57,21 @@ interface SeriesBookItem {
   publisher: string | null;
 }
 
+interface SeriesSlotItem {
+  id: string;
+  title: string;
+  sequence: number | null;
+  authors: string[];
+  hasCover: boolean;
+}
+
 interface SeriesDetail {
   id: string;
   name: string;
   totalBooks: number | null;
   authors: SeriesAuthorItem[];
   books: SeriesBookItem[];
+  slots: SeriesSlotItem[];
 }
 
 // ── Stat tile ─────────────────────────────────────────────────────────────────
@@ -94,32 +111,42 @@ function StatTile({
 const PHOTO_SIZE = 100;
 
 function AuthorPanel({ author }: { author: AuthorDetail }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  function goToAuthor() {
+    navigate(`/authors/${author.id}`, { state: { from: location.pathname } });
+  }
+
   return (
     <Group align="flex-start" gap="md" wrap="nowrap">
-      {author.hasCover ? (
-        <img
-          src={`/api/v1/authors/${author.id}/photo`}
-          alt={author.name}
-          style={{
-            width: PHOTO_SIZE,
-            height: PHOTO_SIZE,
-            objectFit: 'cover',
-            borderRadius: 'var(--mantine-radius-md)',
-            flexShrink: 0,
-          }}
-        />
-      ) : (
-        <Avatar
-          size={PHOTO_SIZE}
-          radius="md"
-          color="gray"
-          style={{ flexShrink: 0 }}
-        >
-          <IconUser size={40} />
-        </Avatar>
-      )}
+      <UnstyledButton onClick={goToAuthor} style={{ flexShrink: 0 }}>
+        {author.hasCover ? (
+          <img
+            src={`/api/v1/authors/${author.id}/photo`}
+            alt={author.name}
+            style={{
+              width: PHOTO_SIZE,
+              height: PHOTO_SIZE,
+              objectFit: 'cover',
+              borderRadius: 'var(--mantine-radius-md)',
+            }}
+          />
+        ) : (
+          <Avatar size={PHOTO_SIZE} radius="md" color="gray">
+            <IconUser size={40} />
+          </Avatar>
+        )}
+      </UnstyledButton>
       <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-        <Text fw={600}>{author.name}</Text>
+        <Anchor
+          component="button"
+          fw={600}
+          onClick={goToAuthor}
+          style={{ textAlign: 'left' }}
+        >
+          {author.name}
+        </Anchor>
         <Text
           size="sm"
           c={author.biography ? undefined : 'dimmed'}
@@ -235,6 +262,155 @@ function BookCard({
   );
 }
 
+// ── Slot card (ghost — not in library) ────────────────────────────────────────
+
+function SlotCard({ slot }: { slot: SeriesSlotItem }) {
+  const [opened, setOpened] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const showCover = slot.hasCover && !imgError;
+  const copyText = `${slot.title}${slot.authors.length ? ` by ${slot.authors.join(', ')}` : ''}`;
+
+  return (
+    <Popover
+      opened={opened}
+      onClose={() => setOpened(false)}
+      position="top"
+      withArrow
+      shadow="md"
+      width={220}
+    >
+      <Popover.Target>
+        <UnstyledButton
+          onClick={() => setOpened((o) => !o)}
+          style={{
+            width: CARD_W,
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 4px',
+            borderRadius: 'var(--mantine-radius-sm)',
+            opacity: 0.55,
+            filter: 'saturate(0.3)',
+          }}
+        >
+          <Box
+            style={{
+              position: 'relative',
+              width: CARD_W - 16,
+              height: COVER_H,
+            }}
+          >
+            {showCover ? (
+              <img
+                src={`/api/v1/series/slots/${slot.id}/cover`}
+                alt=""
+                onError={() => setImgError(true)}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: 6,
+                  display: 'block',
+                  boxShadow: '0 3px 10px rgba(0,0,0,0.25)',
+                }}
+              />
+            ) : (
+              <Box
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  background: 'var(--mantine-color-gray-2)',
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <IconBook2 size={32} color="var(--mantine-color-dimmed)" />
+              </Box>
+            )}
+            <Badge
+              size="xs"
+              color="gray"
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 6,
+                opacity: 0.9,
+                fontSize: 9,
+              }}
+            >
+              Not in library
+            </Badge>
+            {slot.sequence != null && (
+              <Badge
+                size="xs"
+                style={{
+                  position: 'absolute',
+                  bottom: 6,
+                  left: 6,
+                  opacity: 0.9,
+                }}
+              >
+                #{slot.sequence}
+              </Badge>
+            )}
+          </Box>
+
+          <Text
+            size="xs"
+            fw={500}
+            ta="center"
+            lineClamp={2}
+            style={{ width: '100%' }}
+          >
+            {slot.title}
+          </Text>
+        </UnstyledButton>
+      </Popover.Target>
+
+      <Popover.Dropdown>
+        <Stack gap="xs">
+          <Text size="sm" fw={600} lineClamp={3}>
+            {slot.title}
+          </Text>
+          {slot.authors.length > 0 && (
+            <Text size="xs" c="dimmed">
+              {slot.authors.join(', ')}
+            </Text>
+          )}
+          <CopyButton value={copyText} timeout={2000}>
+            {({ copied, copy }) => (
+              <Tooltip
+                label={copied ? 'Copied!' : 'Copy title & author'}
+                withArrow
+              >
+                <Button
+                  size="xs"
+                  variant="light"
+                  color={copied ? 'teal' : 'blue'}
+                  leftSection={
+                    copied ? <IconCheck size={14} /> : <IconCopy size={14} />
+                  }
+                  onClick={() => {
+                    copy();
+                    setOpened(false);
+                  }}
+                  fullWidth
+                >
+                  {copied ? 'Copied!' : 'Copy title & author'}
+                </Button>
+              </Tooltip>
+            )}
+          </CopyButton>
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function SeriesDetailPage() {
@@ -248,15 +424,22 @@ export function SeriesDetailPage() {
   const [loading, setLoading] = useState(true);
   const [authorDetails, setAuthorDetails] = useState<AuthorDetail[]>([]);
   const [authorIndex, setAuthorIndex] = useState(0);
+  const [enriching, setEnriching] = useState(false);
+  const [libraryOnly, setLibraryOnly] = useState(false);
 
-  useEffect(() => {
+  const loadDetail = useCallback(() => {
     if (!seriesId) return;
+    setLoading(true);
     api
       .get<SeriesDetail>(`/series/${seriesId}`)
       .then((res) => setDetail(res.data))
       .catch(() => setDetail(null))
       .finally(() => setLoading(false));
   }, [seriesId]);
+
+  useEffect(() => {
+    loadDetail();
+  }, [loadDetail]);
 
   useEffect(() => {
     if (!detail) return;
@@ -282,10 +465,26 @@ export function SeriesDetailPage() {
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [navigate, from]);
 
+  const handleEnrich = async () => {
+    if (!seriesId) return;
+    setEnriching(true);
+    try {
+      await api.post(`/series/${seriesId}/enrich`);
+      loadDetail();
+    } catch {
+      pushToast(
+        'Could not fetch series data from the metadata provider. Check that Hardcover is configured or that a book in this series has a Goodreads ID.',
+        { title: 'Enrichment failed', color: 'red' },
+      );
+    } finally {
+      setEnriching(false);
+    }
+  };
+
   // ── derived stats ──────────────────────────────────────────────────────────
   const stats = (() => {
     if (!detail) return null;
-    const { books, totalBooks } = detail;
+    const { books, slots, totalBooks } = detail;
 
     const years = books
       .map((b) =>
@@ -311,11 +510,32 @@ export function SeriesDetailPage() {
     const formats = [...new Set(books.flatMap((b) => b.formats))];
 
     const ownedCount = books.length;
+    const totalCount = totalBooks ?? ownedCount + slots.length;
     const bookCount =
-      totalBooks != null ? `${ownedCount} / ${totalBooks}` : String(ownedCount);
+      totalBooks != null || slots.length > 0
+        ? `${ownedCount} / ${totalCount}`
+        : String(ownedCount);
 
     return { yearRange, totalPages, publishers, formats, bookCount };
   })();
+
+  // Merge owned books + slots into one sorted strip
+  type StripItem =
+    | { kind: 'book'; data: SeriesBookItem }
+    | { kind: 'slot'; data: SeriesSlotItem };
+
+  const stripItems: StripItem[] = detail
+    ? [
+        ...detail.books.map((b): StripItem => ({ kind: 'book', data: b })),
+        ...(libraryOnly
+          ? []
+          : detail.slots.map((s): StripItem => ({ kind: 'slot', data: s }))),
+      ].sort((a, b) => {
+        const seqA = a.data.sequence ?? Infinity;
+        const seqB = b.data.sequence ?? Infinity;
+        return seqA - seqB;
+      })
+    : [];
 
   const currentAuthor =
     authorDetails.length > 0 ? authorDetails[authorIndex] : null;
@@ -341,14 +561,33 @@ export function SeriesDetailPage() {
           borderBottom: '1px solid var(--mantine-color-default-border)',
         }}
       >
-        <Button
-          leftSection={<IconChevronLeft size={16} />}
-          variant="subtle"
-          size="sm"
-          onClick={() => navigate(from)}
-        >
-          Back
-        </Button>
+        <Group justify="space-between">
+          <Button
+            leftSection={<IconChevronLeft size={16} />}
+            variant="subtle"
+            size="sm"
+            onClick={() => navigate(from)}
+          >
+            Back
+          </Button>
+          <Group gap="md">
+            <Switch
+              label="Library only"
+              size="sm"
+              checked={libraryOnly}
+              onChange={(e) => setLibraryOnly(e.currentTarget.checked)}
+            />
+            <Button
+              leftSection={<IconRefresh size={16} />}
+              variant="subtle"
+              size="sm"
+              loading={enriching}
+              onClick={handleEnrich}
+            >
+              Fetch Complete Series
+            </Button>
+          </Group>
+        </Group>
       </Box>
 
       {loading && (
@@ -486,30 +725,34 @@ export function SeriesDetailPage() {
 
           {/* ── book strip (fixed at bottom) ──────────────────────────── */}
           <Divider />
-          <Box style={{ flexShrink: 0 }}>
-            <ScrollArea
-              type="scroll"
-              style={{ width: '100%' }}
-              offsetScrollbars
+          <Box
+            style={{
+              flexShrink: 0,
+              overflowX: 'auto',
+              overflowY: 'hidden',
+            }}
+          >
+            <Box
+              px="md"
+              py="sm"
+              style={{ display: 'flex', gap: 8, flexWrap: 'nowrap' }}
             >
-              <Box
-                px="md"
-                py="sm"
-                style={{ display: 'flex', gap: 8, minWidth: 'max-content' }}
-              >
-                {detail.books.map((book) => (
+              {stripItems.map((item) =>
+                item.kind === 'book' ? (
                   <BookCard
-                    key={book.id}
-                    book={book}
+                    key={item.data.id}
+                    book={item.data}
                     onClick={() =>
-                      navigate(`/books/${book.id}`, {
+                      navigate(`/books/${item.data.id}`, {
                         state: { from: location.pathname },
                       })
                     }
                   />
-                ))}
-              </Box>
-            </ScrollArea>
+                ) : (
+                  <SlotCard key={item.data.id} slot={item.data} />
+                ),
+              )}
+            </Box>
           </Box>
         </>
       )}
