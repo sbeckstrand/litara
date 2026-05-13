@@ -427,7 +427,7 @@ export class LibraryWriteService {
     ext: string,
   ): Promise<void> {
     if (ext === '.epub') {
-      const epub = await EPub.createAsync(filePath);
+      const epub = (await EPub.createAsync(filePath)) as unknown as EPub;
       const coverId = epub.metadata.cover as string | undefined;
       if (!coverId) return;
       const [data] = await epub.getImageAsync(coverId);

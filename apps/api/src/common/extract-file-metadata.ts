@@ -83,7 +83,7 @@ export async function extractFileMetadata(
 async function extractEpubFileMetadata(
   filePath: string,
 ): Promise<ExtractedFileMetadata> {
-  const epub = await EPub.createAsync(filePath);
+  const epub = (await EPub.createAsync(filePath)) as unknown as EPub;
   const meta = epub.metadata;
 
   const rawCreator = meta.creator ?? '';
