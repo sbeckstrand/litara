@@ -349,11 +349,24 @@ export default function BookDetailScreen() {
         <ScrollView contentContainerStyle={styles.scroll}>
           {/* Cover + basic info */}
           <View style={styles.heroSection}>
-            <Image
-              source={coverSource}
-              style={styles.cover}
-              contentFit="cover"
-            />
+            <View style={styles.coverColumn}>
+              <Image
+                source={coverSource}
+                style={styles.cover}
+                contentFit="cover"
+              />
+              <Pressable
+                style={styles.metadataBtn}
+                onPress={() =>
+                  router.push(
+                    `/book/${id}/search-metadata?title=${encodeURIComponent(book?.title ?? '')}` as never,
+                  )
+                }
+              >
+                <Ionicons name="search-outline" size={13} color="#4a9eff" />
+                <Text style={styles.metadataBtnText}>Metadata</Text>
+              </Pressable>
+            </View>
             <View style={styles.heroInfo}>
               <Text style={styles.title}>{book.title}</Text>
               {book.subtitle && (
@@ -836,7 +849,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#1c1c1e',
   },
+  coverColumn: { alignItems: 'center', gap: 8 },
   cover: { width: 110, height: 165, borderRadius: 6 },
+  metadataBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    width: 110,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#1a2f4a',
+  },
+  metadataBtnText: { color: '#4a9eff', fontSize: 12, fontWeight: '600' },
   heroInfo: { flex: 1, justifyContent: 'center', gap: 6 },
   title: { color: '#fff', fontSize: 17, fontWeight: '700', lineHeight: 22 },
   subtitle: { color: '#aaa', fontSize: 14, lineHeight: 18 },

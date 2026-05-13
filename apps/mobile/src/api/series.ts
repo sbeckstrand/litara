@@ -5,6 +5,11 @@ export interface SeriesCoverBook {
   coverUpdatedAt: string;
 }
 
+export interface SeriesAuthorItem {
+  id: string;
+  name: string;
+}
+
 export interface SeriesListItem {
   id: string;
   name: string;
@@ -26,12 +31,21 @@ export interface SeriesBookItem {
   publisher: string | null;
 }
 
+export interface SeriesSlotItem {
+  id: string;
+  title: string;
+  sequence: number | null;
+  authors: string[];
+  hasCover: boolean;
+}
+
 export interface SeriesDetail {
   id: string;
   name: string;
   totalBooks: number | null;
-  authors: string[];
+  authors: SeriesAuthorItem[];
   books: SeriesBookItem[];
+  slots: SeriesSlotItem[];
 }
 
 export function getAllSeries(): Promise<SeriesListItem[]> {
@@ -40,4 +54,8 @@ export function getAllSeries(): Promise<SeriesListItem[]> {
 
 export function getSeriesDetail(id: string): Promise<SeriesDetail> {
   return api.get<SeriesDetail>(`/series/${id}`).then((r) => r.data);
+}
+
+export function enrichSeries(id: string): Promise<void> {
+  return api.post(`/series/${id}/enrich`).then(() => undefined);
 }

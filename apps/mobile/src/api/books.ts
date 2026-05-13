@@ -143,3 +143,54 @@ export function updateBookShelves(
 ): Promise<void> {
   return api.put(`/books/${id}/shelves`, { shelfIds });
 }
+
+export interface MetadataResult {
+  title?: string | null;
+  subtitle?: string | null;
+  authors?: string[] | null;
+  description?: string | null;
+  publishedDate?: string | null;
+  publisher?: string | null;
+  language?: string | null;
+  pageCount?: number | null;
+  isbn13?: string | null;
+  isbn10?: string | null;
+  coverUrl?: string | null;
+  googleBooksId?: string | null;
+  openLibraryId?: string | null;
+  goodreadsId?: string | null;
+  asin?: string | null;
+  goodreadsRating?: number | null;
+  categories?: string[] | null;
+  genres?: string[] | null;
+  tags?: string[] | null;
+  moods?: string[] | null;
+  seriesName?: string | null;
+  seriesPosition?: number | null;
+  seriesTotalBooks?: number | null;
+}
+
+export interface MetadataSearchResult {
+  provider: string;
+  providerLabel: string;
+  result: MetadataResult;
+}
+
+export async function searchBookMetadata(
+  bookId: string,
+  provider: string,
+  params: { isbn?: string; title?: string; author?: string },
+): Promise<MetadataResult[]> {
+  const { data } = await api.get<MetadataResult[]>(
+    `/books/${bookId}/search-metadata`,
+    { params: { provider, ...params } },
+  );
+  return data ?? [];
+}
+
+export async function applyBookMetadata(
+  bookId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  await api.patch(`/books/${bookId}`, payload);
+}
