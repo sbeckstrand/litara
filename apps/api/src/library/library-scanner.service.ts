@@ -528,7 +528,7 @@ export class LibraryScannerService implements OnModuleInit, OnModuleDestroy {
     filePath: string,
     bookId: string,
   ): Promise<void> {
-    const epub = await EPub.createAsync(filePath);
+    const epub = (await EPub.createAsync(filePath)) as unknown as EPub;
     // cover is typed as `any` in IMetadata — one cast to usable type
     const coverId = epub.metadata.cover as string | undefined;
     if (!coverId) return;

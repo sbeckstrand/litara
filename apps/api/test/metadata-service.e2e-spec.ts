@@ -6,7 +6,11 @@ import { LibraryScannerService } from '../src/library/library-scanner.service';
 import { GoogleBooksService } from '../src/metadata/providers/google-books.service';
 import { OpenLibraryService } from '../src/metadata/providers/open-library.service';
 import { GoodreadsService } from '../src/metadata/providers/goodreads.service';
-import { MetadataService } from '../src/metadata/metadata.service';
+import { HardcoverService } from '../src/metadata/providers/hardcover.service';
+import {
+  MetadataService,
+  DEFAULT_FIELD_CONFIG,
+} from '../src/metadata/metadata.service';
 import { DatabaseService } from '../src/database/database.service';
 import { cleanDatabase } from './helpers/db.helper';
 
@@ -52,6 +56,12 @@ describe('MetadataService (e2e — mocked providers)', () => {
     searchByIsbn: jest.fn(),
     searchByTitleAuthor: jest.fn(),
   };
+  const mockHardcover = {
+    searchByIsbn: jest.fn(),
+    searchByTitleAuthor: jest.fn(),
+    searchManyByTitleAuthor: jest.fn(),
+    fetchSeriesByName: jest.fn(),
+  };
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -67,6 +77,8 @@ describe('MetadataService (e2e — mocked providers)', () => {
       .useValue(mockOpenLibrary)
       .overrideProvider(GoodreadsService)
       .useValue(mockGoodreads)
+      .overrideProvider(HardcoverService)
+      .useValue(mockHardcover)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -149,8 +161,10 @@ describe('MetadataService (e2e — mocked providers)', () => {
       const book = await seedBook();
       // open-library called by title/author; its isbn13 is then chained to subsequent providers
       mockOpenLibrary.searchByTitleAuthor.mockResolvedValueOnce(MOCK_RESULT);
-      // goodreads therefore called by ISBN for genres, seriesName
+      // goodreads called by ISBN for genres/rating
       mockGoodreads.searchByIsbn.mockResolvedValueOnce(MOCK_RESULT);
+      // hardcover called by ISBN for series fields
+      mockHardcover.searchByIsbn.mockResolvedValueOnce(MOCK_RESULT);
 
       await metadataService.enrichBook(book.id, { title: 'T', authors: ['A'] });
 
@@ -250,6 +264,79 @@ describe('MetadataService (e2e — mocked providers)', () => {
       await expect(
         metadataService.enrichBook(book.id, { title: 'T', authors: ['A'] }),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  // ── field config (DB override) ───────────────────────────────────────────
+
+  describe('field config', () => {
+    const FIELD_CONFIG_KEY = 'metadata_field_config';
+
+    afterEach(async () => {
+      await db.serverSettings.deleteMany({ where: { key: FIELD_CONFIG_KEY } });
+    });
+
+    it('uses DEFAULT_FIELD_CONFIG when no DB row exists', async () => {
+      const book = await seedBook();
+      // description defaults to google-books
+      mockOpenLibrary.searchByTitleAuthor.mockResolvedValueOnce({
+        ...MOCK_RESULT,
+        description: 'OL description',
+      });
+      mockGoogleBooks.searchByIsbn.mockResolvedValueOnce({
+        ...MOCK_RESULT,
+        description: 'GB description',
+      });
+
+      await metadataService.enrichBook(book.id, { title: 'T', authors: ['A'] });
+
+      const updated = await db.book.findUnique({ where: { id: book.id } });
+      expect(updated?.description).toBe('GB description');
+    });
+
+    it('respects DB field config — uses open-library for description when configured', async () => {
+      const book = await seedBook();
+
+      // Override: route description to open-library instead of google-books
+      const customConfig = DEFAULT_FIELD_CONFIG.map((fc) =>
+        fc.field === 'description' ? { ...fc, provider: 'open-library' } : fc,
+      );
+      await db.serverSettings.create({
+        data: { key: FIELD_CONFIG_KEY, value: JSON.stringify(customConfig) },
+      });
+
+      mockOpenLibrary.searchByTitleAuthor.mockResolvedValueOnce({
+        ...MOCK_RESULT,
+        description: 'OL description',
+      });
+      mockGoogleBooks.searchByIsbn.mockResolvedValueOnce({
+        ...MOCK_RESULT,
+        description: 'GB description',
+      });
+
+      await metadataService.enrichBook(book.id, { title: 'T', authors: ['A'] });
+
+      const updated = await db.book.findUnique({ where: { id: book.id } });
+      expect(updated?.description).toBe('OL description');
+    });
+
+    it('skips a field entirely when disabled in DB config', async () => {
+      const book = await seedBook();
+
+      const customConfig = DEFAULT_FIELD_CONFIG.map((fc) =>
+        fc.field === 'description' ? { ...fc, enabled: false } : fc,
+      );
+      await db.serverSettings.create({
+        data: { key: FIELD_CONFIG_KEY, value: JSON.stringify(customConfig) },
+      });
+
+      mockOpenLibrary.searchByTitleAuthor.mockResolvedValueOnce(MOCK_RESULT);
+      mockGoogleBooks.searchByIsbn.mockResolvedValueOnce(MOCK_RESULT);
+
+      await metadataService.enrichBook(book.id, { title: 'T', authors: ['A'] });
+
+      const updated = await db.book.findUnique({ where: { id: book.id } });
+      expect(updated?.description).toBeNull();
     });
   });
 

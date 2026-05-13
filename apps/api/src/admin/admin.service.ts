@@ -174,6 +174,22 @@ export class AdminService {
     return { enabled };
   }
 
+  async getGoodreadsPlaywrightSetting() {
+    const setting = await this.prisma.serverSettings.findUnique({
+      where: { key: 'goodreads_playwright_enabled' },
+    });
+    return { enabled: setting?.value === 'true' };
+  }
+
+  async setGoodreadsPlaywrightSetting(enabled: boolean) {
+    await this.prisma.serverSettings.upsert({
+      where: { key: 'goodreads_playwright_enabled' },
+      create: { key: 'goodreads_playwright_enabled', value: String(enabled) },
+      update: { value: String(enabled) },
+    });
+    return { enabled };
+  }
+
   getMetadataProviderStatuses() {
     return this.metadataService.getProviderStatuses();
   }
