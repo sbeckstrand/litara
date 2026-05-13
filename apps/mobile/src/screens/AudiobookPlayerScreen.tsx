@@ -19,7 +19,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TrackPlayer, {
   Event,
   State,
-  useActiveTrack,
   usePlaybackState,
   useProgress,
   useTrackPlayerEvents,
@@ -35,6 +34,9 @@ import type { AudiobookFileInfo } from '@/src/api/audiobooks';
 
 const SPEEDS = [0.5, 1.0, 1.5, 2.0];
 const SPEED_KEY = 'litara-audiobook-speed';
+const PLAYER_EVENTS: [Event.PlaybackActiveTrackChanged] = [
+  Event.PlaybackActiveTrackChanged,
+];
 
 interface ChapterWithAbs {
   index: number;
@@ -69,15 +71,16 @@ function AudiobookPlayerImpl({ bookId }: Props) {
   const [activeQueueIdx, setActiveQueueIdx] = useState(0);
 
   const chaptersListRef = useRef<FlatList<ChapterWithAbs>>(null);
+  const isMountedRef = useRef(true);
 
   // RNTP reactive state
   const progress = useProgress(500);
   const { state } = usePlaybackState();
-  useActiveTrack(); // subscribe so RNTP notifies on track changes
 
-  useTrackPlayerEvents([Event.PlaybackActiveTrackChanged], ({ index }) => {
+  const handleTrackChanged = useCallback(({ index }: { index?: number }) => {
     if (index != null) setActiveQueueIdx(index);
-  });
+  }, []);
+  useTrackPlayerEvents(PLAYER_EVENTS, handleTrackChanged);
 
   const isPlaying = state === State.Playing;
 
@@ -127,6 +130,17 @@ function AudiobookPlayerImpl({ bookId }: Props) {
     (fileStartOffsets[activeFileIndex] ?? 0) + currentTime;
 
   // ---------------------------------------------------------------------------
+  // Track mount state to prevent async state updates after unmount
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // ---------------------------------------------------------------------------
   // Restore speed preference for UI display
   // ---------------------------------------------------------------------------
 
@@ -144,16 +158,22 @@ function AudiobookPlayerImpl({ bookId }: Props) {
     if (!book || audiobookFiles.length === 0) return;
 
     void (async () => {
-      await ensurePlayerSetup();
-      await loadAudiobook({
-        bookId,
-        bookTitle: book.title,
-        bookAuthors: book.authors,
-        audiobookFiles,
-      });
-      const idx = await TrackPlayer.getActiveTrackIndex();
-      if (idx != null) setActiveQueueIdx(idx);
-      setPlayerReady(true);
+      try {
+        await ensurePlayerSetup();
+        await loadAudiobook({
+          bookId,
+          bookTitle: book.title,
+          bookAuthors: book.authors,
+          audiobookFiles,
+        });
+        if (!isMountedRef.current) return;
+        const idx = await TrackPlayer.getActiveTrackIndex();
+        if (!isMountedRef.current) return;
+        if (idx != null) setActiveQueueIdx(idx);
+        setPlayerReady(true);
+      } catch {
+        // Player may be unavailable if user navigated away during load
+      }
     })();
   }, [bookId, book]); // eslint-disable-line react-hooks/exhaustive-deps
 
