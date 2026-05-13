@@ -1,3 +1,15 @@
+# [1.37.0](https://github.com/litara-app/litara/compare/v1.36.1...v1.37.0) (2026-05-13)
+
+
+### Bug Fixes
+
+* changing api response, and adding docs ([d5cf9a7](https://github.com/litara-app/litara/commit/d5cf9a764e971e3c4605ee82aeef7fe9c9db3de0))
+
+
+### Features
+
+* adding in ability to pull complete series information ([ac7f492](https://github.com/litara-app/litara/commit/ac7f492643d815959b847ecca0484ad9f5d0bd18))
+
 ## [1.36.1](https://github.com/litara-app/litara/compare/v1.36.0...v1.36.1) (2026-05-11)
 
 
