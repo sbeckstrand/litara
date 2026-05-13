@@ -31,7 +31,6 @@ import { useAudiobookDownload } from '@/src/hooks/useAudiobookDownload';
 import { ensurePlayerSetup } from '@/src/services/playback/setup';
 import { loadAudiobook } from '@/src/services/playback/loadAudiobook';
 import { formatTime } from '@/src/utils/formatTime';
-import type { AudiobookFileInfo } from '@/src/api/audiobooks';
 
 const SPEEDS = [0.5, 1.0, 1.5, 2.0];
 const SPEED_KEY = 'litara-audiobook-speed';

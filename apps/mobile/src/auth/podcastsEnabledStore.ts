@@ -1,5 +1,5 @@
 let _enabled = false;
-const _listeners: Array<(enabled: boolean) => void> = [];
+const _listeners: ((enabled: boolean) => void)[] = [];
 
 export const podcastsEnabledStore = {
   get: () => _enabled,
