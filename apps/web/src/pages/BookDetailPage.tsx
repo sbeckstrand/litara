@@ -27,6 +27,7 @@ import {
   Progress,
   Tooltip,
   Checkbox,
+  Overlay,
 } from '@mantine/core';
 import {
   IconBook2,
@@ -47,6 +48,7 @@ import {
   IconTrash,
   IconListNumbers,
   IconChevronLeft,
+  IconPhoto,
 } from '@tabler/icons-react';
 import axios from 'axios';
 import { api } from '../utils/api';
@@ -66,6 +68,7 @@ import { EditMetadataTab } from '../components/EditMetadataTab';
 import { SearchMetadataTab } from '../components/SearchMetadataTab';
 import { SidecarTab } from '../components/SidecarTab';
 import { BookAnnotationsTab } from '../components/BookAnnotationsTab';
+import { ReplaceCoverModal } from '../components/ReplaceCoverModal';
 
 function detailToEdited(d: BookDetail): EditedFields {
   return {
@@ -173,6 +176,9 @@ export function BookDetailPage() {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
+
+  const [replaceCoverOpen, setReplaceCoverOpen] = useState(false);
+  const [coverHovered, setCoverHovered] = useState(false);
   const isAdmin = (() => {
     try {
       return JSON.parse(localStorage.getItem('user') ?? '{}')?.role === 'ADMIN';
@@ -195,6 +201,7 @@ export function BookDetailPage() {
         matchConfirmOpen ||
         deleteConfirmOpen ||
         sendModalOpen ||
+        replaceCoverOpen ||
         resetProgressSource !== null
       )
         return;
@@ -209,6 +216,7 @@ export function BookDetailPage() {
     matchConfirmOpen,
     deleteConfirmOpen,
     sendModalOpen,
+    replaceCoverOpen,
     resetProgressSource,
   ]);
 
@@ -636,32 +644,55 @@ export function BookDetailPage() {
                   overflowY: 'auto',
                 }}
               >
-                <AspectRatio ratio={2 / 3}>
-                  {detail.hasCover ? (
-                    <img
-                      src={`/api/v1/books/${detail.id}/cover?v=${detail.coverUpdatedAt}`}
-                      alt={detail.title}
-                      style={{
-                        objectFit: 'cover',
-                        borderRadius: 8,
-                        width: '100%',
-                        height: '100%',
-                      }}
-                    />
-                  ) : (
-                    <Center
-                      style={{
-                        background: 'var(--mantine-color-gray-1)',
-                        borderRadius: 8,
-                      }}
-                    >
-                      <IconBook2
-                        size={48}
-                        color="var(--mantine-color-gray-5)"
+                <Box
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => setCoverHovered(true)}
+                  onMouseLeave={() => setCoverHovered(false)}
+                >
+                  <AspectRatio ratio={2 / 3}>
+                    {detail.hasCover ? (
+                      <img
+                        src={`/api/v1/books/${detail.id}/cover?v=${detail.coverUpdatedAt}`}
+                        alt={detail.title}
+                        style={{
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          width: '100%',
+                          height: '100%',
+                        }}
                       />
-                    </Center>
+                    ) : (
+                      <Center
+                        style={{
+                          background: 'var(--mantine-color-gray-1)',
+                          borderRadius: 8,
+                        }}
+                      >
+                        <IconBook2
+                          size={48}
+                          color="var(--mantine-color-gray-5)"
+                        />
+                      </Center>
+                    )}
+                  </AspectRatio>
+                  {coverHovered && (
+                    <Overlay
+                      color="#000"
+                      backgroundOpacity={0.45}
+                      radius={8}
+                      center
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setReplaceCoverOpen(true)}
+                    >
+                      <Stack align="center" gap={6}>
+                        <IconPhoto size={22} color="white" />
+                        <Text size="xs" c="white" fw={500}>
+                          Replace Cover
+                        </Text>
+                      </Stack>
+                    </Overlay>
                   )}
-                </AspectRatio>
+                </Box>
                 <Group gap={4} wrap="wrap">
                   {detail.files.map((f) => (
                     <Badge
@@ -1503,6 +1534,19 @@ export function BookDetailPage() {
           </Group>
         </Stack>
       </Modal>
+
+      {detail && (
+        <ReplaceCoverModal
+          opened={replaceCoverOpen}
+          onClose={() => setReplaceCoverOpen(false)}
+          detail={detail}
+          onApply={async (payload) => {
+            await api.patch(`/books/${detail.id}`, payload);
+            const res = await api.get<BookDetail>(`/books/${detail.id}`);
+            handleApplied(res.data);
+          }}
+        />
+      )}
     </>
   );
 }
