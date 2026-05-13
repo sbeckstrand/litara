@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/litara-app/litara/compare/v1.37.0...v1.38.0) (2026-05-13)
+
+
+### Features
+
+* update metadata on mobile, bug fixes ([7e95eb0](https://github.com/litara-app/litara/commit/7e95eb05485ab47fc99db0343534a06de3d58dc0))
+
 # [1.37.0](https://github.com/litara-app/litara/compare/v1.36.1...v1.37.0) (2026-05-13)
 
 
