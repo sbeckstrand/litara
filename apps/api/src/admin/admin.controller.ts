@@ -146,6 +146,18 @@ export class AdminController {
     return this.adminService.setKoReaderSetting(body.enabled);
   }
 
+  @Get('settings/goodreads-playwright')
+  @ApiOkResponse()
+  getGoodreadsPlaywrightSettings() {
+    return this.adminService.getGoodreadsPlaywrightSetting();
+  }
+
+  @Patch('settings/goodreads-playwright')
+  @ApiOkResponse()
+  setGoodreadsPlaywrightSettings(@Body() body: { enabled: boolean }) {
+    return this.adminService.setGoodreadsPlaywrightSetting(body.enabled);
+  }
+
   @Get('settings/metadata-providers')
   @ApiOkResponse({ type: MetadataProviderStatusDto, isArray: true })
   getMetadataProviders() {

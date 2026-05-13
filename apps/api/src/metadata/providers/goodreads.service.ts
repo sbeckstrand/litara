@@ -6,6 +6,7 @@ import type {
   SeriesBookSlotData,
   SeriesRosterResult,
 } from '../interfaces/series-roster.interface';
+import { PlaywrightService } from './playwright.service';
 
 const SEARCH_URL = 'https://www.goodreads.com/search?q=';
 const HEADERS = {
@@ -29,6 +30,8 @@ interface GoodreadsJsonLd {
 @Injectable()
 export class GoodreadsService {
   private readonly logger = new Logger(GoodreadsService.name);
+
+  constructor(private readonly playwright: PlaywrightService) {}
 
   async searchByIsbn(isbn: string): Promise<MetadataResult | null> {
     this.logger.debug(`Searching Goodreads for ISBN: ${isbn}`);
@@ -66,15 +69,6 @@ export class GoodreadsService {
   ): Promise<MetadataResult | null> {
     try {
       const { html, responseUrl } = await this.get(url);
-
-      if (html.includes('awsWaf') || html.includes('aws-waf-token')) {
-        this.logger.warn(
-          'Goodreads is returning an AWS WAF challenge page — scraping is blocked. ' +
-            'Direct HTTP requests cannot solve this challenge.',
-        );
-        throw new Error('GOODREADS_WAF_BLOCKED');
-      }
-
       const $ = cheerio.load(html);
 
       // If the search redirected to a book page, parse it directly.
@@ -467,7 +461,23 @@ export class GoodreadsService {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} for ${url}`);
     }
-    return { html: await response.text(), responseUrl: response.url };
+    const html = await response.text();
+
+    if (html.includes('awsWaf') || html.includes('aws-waf-token')) {
+      if (this.playwright.isAvailable()) {
+        this.logger.debug(
+          'Goodreads WAF challenge detected — retrying with Playwright',
+        );
+        return this.playwright.fetchHtml(url);
+      }
+      this.logger.warn(
+        'Goodreads is returning an AWS WAF challenge page — scraping is blocked. ' +
+          'Enable goodreads_playwright_enabled in server settings to bypass.',
+      );
+      throw new Error('GOODREADS_WAF_BLOCKED');
+    }
+
+    return { html, responseUrl: response.url };
   }
 
   private text($: CheerioAPI, selector: string): string {
