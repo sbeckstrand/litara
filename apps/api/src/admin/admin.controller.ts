@@ -197,6 +197,13 @@ export class AdminController {
     return this.adminService.setShelfmarkSettings(body.shelfmarkUrl ?? null);
   }
 
+  @Post('series/enrich-all')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOkResponse()
+  bulkEnrichSeries() {
+    return this.adminService.bulkEnrichSeries();
+  }
+
   @Post('sidecar/bulk-write')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse()

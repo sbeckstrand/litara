@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
 import type { MetadataResult } from '../interfaces/metadata-result.interface';
+import type {
+  SeriesBookSlotData,
+  SeriesRosterResult,
+} from '../interfaces/series-roster.interface';
 
 const SEARCH_URL = 'https://www.goodreads.com/search?q=';
 const HEADERS = {
@@ -62,6 +66,15 @@ export class GoodreadsService {
   ): Promise<MetadataResult | null> {
     try {
       const { html, responseUrl } = await this.get(url);
+
+      if (html.includes('awsWaf') || html.includes('aws-waf-token')) {
+        this.logger.warn(
+          'Goodreads is returning an AWS WAF challenge page — scraping is blocked. ' +
+            'Direct HTTP requests cannot solve this challenge.',
+        );
+        throw new Error('GOODREADS_WAF_BLOCKED');
+      }
+
       const $ = cheerio.load(html);
 
       // If the search redirected to a book page, parse it directly.
@@ -75,7 +88,9 @@ export class GoodreadsService {
         : this.extractFirstSearchResult($);
 
       if (!bookPath) {
-        this.logger.debug(`No Goodreads results for URL: ${url}`);
+        this.logger.debug(
+          `No Goodreads results for URL: ${url} — page snippet: ${html.slice(0, 300).replace(/\s+/g, ' ')}`,
+        );
         return null;
       }
 
@@ -354,6 +369,89 @@ export class GoodreadsService {
       if (!found && href.includes('/book/show/')) found = href;
     });
     return found;
+  }
+
+  // ─── Series roster ────────────────────────────────────────────────────────────
+
+  async fetchSeriesByGoodreadsId(
+    goodreadsId: string,
+  ): Promise<SeriesRosterResult | null> {
+    this.logger.debug(
+      `Goodreads: fetching series roster via book id ${goodreadsId}`,
+    );
+    try {
+      const bookUrl = `https://www.goodreads.com/book/show/${goodreadsId}`;
+      const { html: bookHtml } = await this.get(bookUrl);
+      const $book = cheerio.load(bookHtml);
+
+      // Find the series page link from the book page
+      const seriesLink = $book('h3[aria-label*=" series"] a, .bookSeries a')
+        .first()
+        .attr('href');
+      if (!seriesLink) {
+        this.logger.debug(
+          `Goodreads: no series link found on book page ${goodreadsId}`,
+        );
+        return null;
+      }
+
+      const seriesUrl = seriesLink.startsWith('http')
+        ? seriesLink
+        : `https://www.goodreads.com${seriesLink}`;
+      const { html: seriesHtml } = await this.get(seriesUrl);
+      const $series = cheerio.load(seriesHtml);
+
+      const books: SeriesBookSlotData[] = [];
+
+      // Each book in the series is in a .listWithDividers__item or .responsiveBook element
+      $series('.listWithDividers__item, .responsiveBook').each((_, el) => {
+        const titleEl = $series(el).find(
+          'a[href*="/book/show/"] .Text__title3, .bookTitle',
+        );
+        const title = titleEl.text().trim();
+        if (!title) return;
+
+        const positionText = $series(el)
+          .find('.Text__subdued, .greyText')
+          .first()
+          .text()
+          .trim();
+        const posMatch = positionText.match(/#?([\d.]+)/);
+        const sequence = posMatch ? parseFloat(posMatch[1]) : null;
+
+        const authorText = $series(el)
+          .find('.authorName span, .ContributorLink__name')
+          .first()
+          .text()
+          .trim();
+        const authors = authorText ? [authorText] : [];
+
+        const coverSrc = $series(el)
+          .find('img.bookCover, img[role="presentation"]')
+          .first()
+          .attr('src');
+        const coverUrl = coverSrc ? this.enlargeCoverUrl(coverSrc) : null;
+
+        books.push({ title, sequence, authors, coverUrl });
+      });
+
+      if (!books.length) {
+        this.logger.debug(
+          `Goodreads: no books found on series page ${seriesUrl}`,
+        );
+        return null;
+      }
+
+      this.logger.debug(
+        `Goodreads: found ${books.length} books in series from ${seriesUrl}`,
+      );
+      return { booksCount: books.length, books };
+    } catch (err) {
+      this.logger.warn(
+        `Goodreads series fetch failed: ${(err as Error).message}`,
+      );
+      return null;
+    }
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────

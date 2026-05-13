@@ -1,11 +1,31 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { HardcoverService } from '../metadata/providers/hardcover.service';
+import { GoodreadsService } from '../metadata/providers/goodreads.service';
+import type { SeriesRosterResult } from '../metadata/interfaces/series-roster.interface';
 import { SeriesListItemDto } from './dto/series-list-item.dto';
 import { SeriesDetailDto } from './dto/series-detail.dto';
 
+export interface EnrichResult {
+  slotsCreated: number;
+  slotsUpdated: number;
+  totalBooks: number | null;
+}
+
 @Injectable()
 export class SeriesService {
-  constructor(private readonly db: DatabaseService) {}
+  private readonly logger = new Logger(SeriesService.name);
+
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly hardcover: HardcoverService,
+    private readonly goodreads: GoodreadsService,
+  ) {}
 
   async findAll(q?: string): Promise<SeriesListItemDto[]> {
     const allSeries = await this.db.series.findMany({
@@ -112,6 +132,16 @@ export class SeriesService {
             },
           },
         },
+        slots: {
+          orderBy: [{ sequence: 'asc' }, { createdAt: 'asc' }],
+          select: {
+            id: true,
+            title: true,
+            sequence: true,
+            authors: true,
+            coverData: true,
+          },
+        },
       },
     });
 
@@ -153,12 +183,248 @@ export class SeriesService {
       publisher: sb.book.publisher,
     }));
 
+    const slots = series.slots.map((slot) => ({
+      id: slot.id,
+      title: slot.title,
+      sequence: slot.sequence,
+      authors: slot.authors,
+      hasCover: slot.coverData !== null,
+    }));
+
     return {
       id: series.id,
       name: series.name,
       totalBooks: series.totalBooks,
       authors: Array.from(authorMap.values()),
       books,
+      slots,
     };
+  }
+
+  async enrichSeries(seriesId: string): Promise<EnrichResult> {
+    const series = await this.db.series.findUnique({
+      where: { id: seriesId },
+      select: {
+        id: true,
+        name: true,
+        books: {
+          select: { sequence: true, bookId: true },
+        },
+      },
+    });
+    if (!series) throw new NotFoundException(`Series ${seriesId} not found`);
+
+    // Collect owned sequence positions (non-null only)
+    const ownedSequences = new Set(
+      series.books
+        .map((b) => b.sequence)
+        .filter((s): s is number => s !== null),
+    );
+
+    // Select provider — respect the admin enable/disable setting stored in ServerSettings
+    let roster: SeriesRosterResult | null = null;
+    const hardcoverSetting = await this.db.serverSettings.findUnique({
+      where: { key: 'metadata_provider_hardcover_enabled' },
+      select: { value: true },
+    });
+    const hardcoverEnabled =
+      !!this.hardcover['apiKey'] && hardcoverSetting?.value !== 'false';
+
+    if (hardcoverEnabled) {
+      roster = await this.hardcover.fetchSeriesByName(series.name);
+    }
+
+    if (!roster) {
+      // Goodreads fallback — check it's enabled before using it
+      const goodreadsSetting = await this.db.serverSettings.findUnique({
+        where: { key: 'metadata_provider_goodreads_enabled' },
+        select: { value: true },
+      });
+      const goodreadsEnabled = goodreadsSetting?.value !== 'false';
+
+      if (!goodreadsEnabled) {
+        throw new BadGatewayException(
+          'No metadata provider available for this series: Hardcover is disabled or not configured and Goodreads is disabled.',
+        );
+      }
+
+      let goodreadsId: string | null = null;
+
+      // Prefer a stored goodreadsId — avoids an extra search round-trip
+      const bookWithGoodreads = await this.db.book.findFirst({
+        where: {
+          series: { some: { seriesId } },
+          goodreadsId: { not: null },
+        },
+        select: { goodreadsId: true },
+      });
+      goodreadsId = bookWithGoodreads?.goodreadsId ?? null;
+
+      // No stored goodreadsId — search Goodreads by title to discover one
+      if (!goodreadsId) {
+        const anyBook = await this.db.book.findFirst({
+          where: { series: { some: { seriesId } } },
+          orderBy: [{ publishedDate: 'asc' }, { title: 'asc' }],
+          select: {
+            title: true,
+            authors: { include: { author: { select: { name: true } } } },
+          },
+        });
+
+        if (!anyBook) {
+          throw new BadGatewayException(
+            'No books found in this series to search Goodreads with.',
+          );
+        }
+
+        const firstAuthor = anyBook.authors[0]?.author.name;
+        this.logger.debug(
+          `enrichSeries "${series.name}": no stored Goodreads ID — searching by title "${anyBook.title}"`,
+        );
+
+        // Try progressively simpler queries until one returns a result
+        const queries: Array<{ title: string; author?: string }> = [
+          { title: anyBook.title, author: firstAuthor },
+          { title: anyBook.title },
+          { title: series.name },
+        ];
+
+        try {
+          for (const q of queries) {
+            const result = await this.goodreads.searchByTitleAuthor(
+              q.title,
+              q.author,
+            );
+            if (result?.goodreadsId) {
+              goodreadsId = result.goodreadsId;
+              break;
+            }
+          }
+        } catch (err) {
+          if ((err as Error).message === 'GOODREADS_WAF_BLOCKED') {
+            throw new BadGatewayException(
+              'Goodreads is blocked by AWS WAF and cannot be scraped from this server. ' +
+                'Enable Hardcover for series enrichment, or enrich individual books first to store their Goodreads IDs.',
+            );
+          }
+          throw err;
+        }
+      }
+
+      if (!goodreadsId) {
+        throw new BadGatewayException(
+          'Could not find this series on Goodreads — try enriching a book first to store its Goodreads ID.',
+        );
+      }
+
+      try {
+        roster = await this.goodreads.fetchSeriesByGoodreadsId(goodreadsId);
+      } catch (err) {
+        if ((err as Error).message === 'GOODREADS_WAF_BLOCKED') {
+          throw new BadGatewayException(
+            'Goodreads is blocked by AWS WAF and cannot be scraped from this server. ' +
+              'Enable Hardcover for series enrichment.',
+          );
+        }
+        throw err;
+      }
+    }
+
+    if (!roster) {
+      throw new BadGatewayException(
+        'Metadata provider returned no results for this series.',
+      );
+    }
+
+    this.logger.debug(
+      `enrichSeries "${series.name}": roster returned ${roster.books.length} books, owned sequences=[${Array.from(ownedSequences).join(',')}]`,
+    );
+
+    // Filter to only missing positions
+    const missing = roster.books.filter(
+      (b) => b.sequence === null || !ownedSequences.has(b.sequence),
+    );
+
+    this.logger.debug(
+      `enrichSeries "${series.name}": ${missing.length} missing after filtering owned positions`,
+    );
+
+    let slotsCreated = 0;
+    let slotsUpdated = 0;
+    const provider = hardcoverEnabled ? 'hardcover' : 'goodreads';
+
+    for (const book of missing) {
+      // Download cover (non-fatal)
+      let coverData: Uint8Array<ArrayBuffer> | null = null;
+      if (book.coverUrl) {
+        try {
+          const res = await fetch(book.coverUrl);
+          if (res.ok) {
+            coverData = new Uint8Array(await res.arrayBuffer());
+          }
+        } catch {
+          // non-fatal
+        }
+      }
+
+      const existing =
+        book.sequence !== null
+          ? await this.db.seriesSlot.findUnique({
+              where: {
+                seriesId_sequence: { seriesId, sequence: book.sequence },
+              },
+              select: { id: true },
+            })
+          : null;
+
+      if (existing) {
+        await this.db.seriesSlot.update({
+          where: { id: existing.id },
+          data: {
+            title: book.title,
+            authors: book.authors,
+            coverData: coverData ?? undefined,
+            provider,
+          },
+        });
+        slotsUpdated++;
+      } else {
+        await this.db.seriesSlot.create({
+          data: {
+            seriesId,
+            title: book.title,
+            sequence: book.sequence,
+            authors: book.authors,
+            coverData: coverData ?? undefined,
+            provider,
+          },
+        });
+        slotsCreated++;
+      }
+    }
+
+    // Always update totalBooks: use provider count if available, otherwise the
+    // number of books the provider actually returned (owned + missing).
+    const totalBooks =
+      roster.booksCount ?? ownedSequences.size + roster.books.length;
+    await this.db.series.update({
+      where: { id: seriesId },
+      data: { totalBooks },
+    });
+
+    this.logger.log(
+      `Enriched series "${series.name}": ${slotsCreated} created, ${slotsUpdated} updated, totalBooks=${totalBooks}`,
+    );
+
+    return { slotsCreated, slotsUpdated, totalBooks };
+  }
+
+  async getSlotCoverData(slotId: string): Promise<Buffer | null> {
+    const slot = await this.db.seriesSlot.findUnique({
+      where: { id: slotId },
+      select: { coverData: true },
+    });
+    if (!slot?.coverData) return null;
+    return Buffer.from(slot.coverData);
   }
 }

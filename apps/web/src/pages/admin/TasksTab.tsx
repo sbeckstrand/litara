@@ -188,7 +188,11 @@ export function TasksTab() {
                     <Text size="xs" c="dimmed">
                       {task.type === 'LIBRARY_SCAN'
                         ? `Scanned ${total} file${total !== 1 ? 's' : ''}`
-                        : `Enriched ${total} ${task.type === 'AUTHOR_PHOTO_ENRICHMENT' ? 'authors' : 'books'}`}
+                        : task.type === 'AUTHOR_PHOTO_ENRICHMENT'
+                          ? `Enriched ${total} author${total !== 1 ? 's' : ''}`
+                          : task.type === 'SERIES_BULK_ENRICH'
+                            ? `Enriched ${total} series`
+                            : `Enriched ${total} book${total !== 1 ? 's' : ''}`}
                     </Text>
                   )}
 

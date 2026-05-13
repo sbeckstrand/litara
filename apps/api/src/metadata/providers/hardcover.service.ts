@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { MetadataResult } from '../interfaces/metadata-result.interface';
+import type {
+  SeriesBookSlotData,
+  SeriesRosterResult,
+} from '../interfaces/series-roster.interface';
 
 const GRAPHQL_URL = 'https://api.hardcover.app/v1/graphql';
 
@@ -50,6 +54,31 @@ interface HcEdition {
 
 interface HcEditionsResponse {
   data?: { editions?: HcEdition[] };
+  errors?: Array<{ message: string }>;
+}
+
+// ── Series roster types ───────────────────────────────────────────────────────
+
+interface HcSeriesBookJunction {
+  title: string | null;
+  cached_image: HcCachedImage | null;
+  contributions: HcContribution[];
+}
+
+interface HcSeriesRef {
+  id: number;
+  name: string;
+  books_count: number | null;
+}
+
+interface HcBookSeriesEntry {
+  position: number | null;
+  series: HcSeriesRef | null;
+  book: HcSeriesBookJunction | null;
+}
+
+interface HcBookSeriesResponse {
+  data?: { book_series?: HcBookSeriesEntry[] };
   errors?: Array<{ message: string }>;
 }
 
@@ -111,6 +140,42 @@ const SEARCH_BY_TITLE_QUERY = `
       order_by: { users_count: desc }
     ) {
       ${EDITION_FIELDS}
+    }
+  }
+`;
+
+// Query the book_series junction table directly — the series→book_series
+// relationship returns empty on some series records even when books exist.
+const SERIES_BOOKS_BY_NAME_QUERY = `
+  query GetSeriesBooksByName($name: String!) {
+    book_series(
+      where: { series: { name: { _eq: $name } } }
+      order_by: { position: asc }
+    ) {
+      position
+      series { id name books_count }
+      book {
+        title
+        cached_image
+        contributions { author { name } }
+      }
+    }
+  }
+`;
+
+const SERIES_BOOKS_BY_NAME_ILIKE_QUERY = `
+  query GetSeriesBooksByNameIlike($name: String!) {
+    book_series(
+      where: { series: { name: { _ilike: $name } } }
+      order_by: { position: asc }
+    ) {
+      position
+      series { id name books_count }
+      book {
+        title
+        cached_image
+        contributions { author { name } }
+      }
     }
   }
 `;
@@ -189,6 +254,55 @@ export class HardcoverService {
       `Hardcover: ${editions.length} edition(s) for "${title}"`,
     );
     return editions.map((e) => this.mapEdition(e));
+  }
+
+  async fetchSeriesByName(
+    seriesName: string,
+  ): Promise<SeriesRosterResult | null> {
+    if (!this.apiKey) return null;
+    this.logger.debug(`Hardcover: fetching series roster for "${seriesName}"`);
+
+    let res = await this.query<HcBookSeriesResponse>(
+      SERIES_BOOKS_BY_NAME_QUERY,
+      { name: seriesName },
+    );
+    let entries = res?.data?.book_series;
+
+    if (!entries?.length) {
+      this.logger.debug(
+        `Hardcover: exact match empty, falling back to ilike for "${seriesName}"`,
+      );
+      res = await this.query<HcBookSeriesResponse>(
+        SERIES_BOOKS_BY_NAME_ILIKE_QUERY,
+        { name: `%${seriesName}%` },
+      );
+      entries = res?.data?.book_series;
+    }
+
+    if (!entries?.length) {
+      this.logger.debug(`Hardcover: no series found for "${seriesName}"`);
+      return null;
+    }
+
+    const seriesRef = entries[0]?.series;
+    const booksCount = seriesRef?.books_count ?? null;
+    this.logger.debug(
+      `Hardcover: "${seriesRef?.name}" — ${entries.length} entries, books_count=${booksCount}`,
+    );
+
+    const books: SeriesBookSlotData[] = entries
+      .filter((entry) => entry.book?.title)
+      .map((entry) => ({
+        title: entry.book!.title!,
+        sequence: entry.position ?? null,
+        authors: (entry.book!.contributions ?? [])
+          .map((c) => c.author?.name)
+          .filter((n): n is string => Boolean(n)),
+        coverUrl: entry.book!.cached_image?.url ?? null,
+      }));
+
+    this.logger.debug(`Hardcover: mapped ${books.length} books from series`);
+    return { booksCount, books };
   }
 
   async testConnection(): Promise<{ ok: boolean; message: string }> {

@@ -131,6 +131,11 @@ export class MetadataService {
       .map((p) => ({ id: p.id, label: p.label }));
   }
 
+  private async getEnabledProviderSet(): Promise<Set<MetadataProvider>> {
+    const enabled = await this.getEnabledProviders();
+    return new Set(enabled.map((p) => p.id as MetadataProvider));
+  }
+
   async testProvider(
     provider: MetadataProvider,
   ): Promise<{ ok: boolean; message: string }> {
@@ -187,6 +192,9 @@ export class MetadataService {
     provider: MetadataProvider,
     input: EnrichInput,
   ): Promise<MetadataResult[]> {
+    const enabledSet = await this.getEnabledProviderSet();
+    if (!enabledSet.has(provider)) return [];
+
     const firstAuthor = input.authors[0];
 
     // ISBN search always returns at most one result
@@ -317,8 +325,9 @@ export class MetadataService {
 
     if (providerFields.size === 0) return null;
 
-    const orderedProviders = PROVIDER_ORDER.filter((p) =>
-      providerFields.has(p),
+    const enabledSet = await this.getEnabledProviderSet();
+    const orderedProviders = PROVIDER_ORDER.filter(
+      (p) => providerFields.has(p) && enabledSet.has(p),
     );
 
     // The provider responsible for isbn13 — its result chains the ISBN to later providers

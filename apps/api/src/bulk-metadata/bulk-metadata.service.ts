@@ -91,6 +91,11 @@ export class BulkMetadataService {
     });
     if (!book) throw new NotFoundException('Book not found');
 
+    const enabledProviders = await this.metadataService.getEnabledProviders();
+    if (!enabledProviders.some((p) => p.id === 'open-library')) {
+      return [];
+    }
+
     const results = await this.openLibrary.searchManyByTitleAuthor(
       book.title,
       book.authors[0]?.author.name,
@@ -281,8 +286,10 @@ export class BulkMetadataService {
         MetadataProvider.Goodreads,
         MetadataProvider.Hardcover,
       ];
-      const orderedProviders = PROVIDER_ORDER.filter((p) =>
-        providerFields.has(p),
+      const enabledProviders = await this.metadataService.getEnabledProviders();
+      const enabledIds = new Set(enabledProviders.map((p) => p.id));
+      const orderedProviders = PROVIDER_ORDER.filter(
+        (p) => providerFields.has(p) && enabledIds.has(p),
       );
 
       for (let i = 0; i < bookIds.length; i++) {

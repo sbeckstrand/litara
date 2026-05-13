@@ -37,6 +37,34 @@ export class SeriesBookItemDto {
   publisher: string | null;
 }
 
+export class SeriesSlotItemDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty({ nullable: true, required: false })
+  sequence: number | null;
+
+  @ApiProperty({ type: [String] })
+  authors: string[];
+
+  @ApiProperty()
+  hasCover: boolean;
+}
+
+export class EnrichResultDto {
+  @ApiProperty()
+  slotsCreated: number;
+
+  @ApiProperty()
+  slotsUpdated: number;
+
+  @ApiProperty({ nullable: true, required: false })
+  totalBooks: number | null;
+}
+
 export class SeriesDetailDto {
   @ApiProperty()
   id: string;
@@ -52,4 +80,7 @@ export class SeriesDetailDto {
 
   @ApiProperty({ type: [SeriesBookItemDto] })
   books: SeriesBookItemDto[];
+
+  @ApiProperty({ type: [SeriesSlotItemDto] })
+  slots: SeriesSlotItemDto[];
 }
