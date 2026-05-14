@@ -369,7 +369,7 @@ export default function MetadataCompareScreen() {
         ),
       );
     }
-  }, [book, selectedResult]);
+  }, [book, selectedResult, id, serverUrl]);
 
   const rows =
     book && selectedResult

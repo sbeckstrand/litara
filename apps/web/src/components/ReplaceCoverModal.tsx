@@ -37,6 +37,7 @@ export function ReplaceCoverModal({
   const [covers, setCovers] = useState<CoverResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);
+  const firstAuthor = detail.authors[0];
 
   useEffect(() => {
     if (!opened) return;
@@ -47,7 +48,7 @@ export function ReplaceCoverModal({
     if (detail.isbn13) params.set('isbn', detail.isbn13);
     else if (detail.isbn10) params.set('isbn', detail.isbn10);
     params.set('title', detail.title);
-    if (detail.authors[0]) params.set('author', detail.authors[0]);
+    if (firstAuthor) params.set('author', firstAuthor);
 
     api
       .get<Array<{ id: string; label: string }>>('/settings/metadata-providers')
@@ -95,7 +96,7 @@ export function ReplaceCoverModal({
     detail.isbn13,
     detail.isbn10,
     detail.title,
-    detail.authors[0],
+    firstAuthor,
   ]);
 
   async function handleSelect(coverUrl: string) {
