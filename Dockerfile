@@ -12,9 +12,9 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/mobi-parser/package.json ./packages/mobi-parser/
 COPY packages/cbz-parser/package.json ./packages/cbz-parser/
 
-# Install all deps; skip lifecycle scripts so 'prek install' doesn't fail
-# without a .git directory, then rebuild native addons explicitly
-RUN npm ci --ignore-scripts && npm rebuild --ignore-scripts
+# Skip lifecycle scripts so prek install doesn't fail without a .git directory,
+# then rebuild native addons (e.g. bcrypt) from source.
+RUN npm ci --ignore-scripts && npm rebuild
 
 # Copy source
 COPY apps/api ./apps/api
