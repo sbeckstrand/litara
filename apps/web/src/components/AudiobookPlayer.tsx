@@ -571,8 +571,8 @@ export function PersistentAudiobookPlayer() {
   }, [isPlaying, currentFileIndex, saveProgress]);
 
   useEffect(() => {
+    const audio = audioRef.current;
     return () => {
-      const audio = audioRef.current;
       if (audio && audio.readyState >= 1 && isFinite(audio.currentTime)) {
         saveProgress(currentFileIndex, audio.currentTime);
       }

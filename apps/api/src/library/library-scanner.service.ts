@@ -532,7 +532,7 @@ export class LibraryScannerService implements OnModuleInit, OnModuleDestroy {
     // cover is typed as `any` in IMetadata — one cast to usable type
     const coverId = epub.metadata.cover as string | undefined;
     if (!coverId) return;
-    const [data] = await epub.getImageAsync(coverId);
+    const [data] = (await epub.getImageAsync(coverId)) as [Buffer, string];
     await this.prisma.book.update({
       where: { id: bookId },
       data: { coverData: new Uint8Array(data) },
