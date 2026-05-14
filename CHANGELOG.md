@@ -1,3 +1,10 @@
+## [1.39.2](https://github.com/litara-app/litara/compare/v1.39.1...v1.39.2) (2026-05-14)
+
+
+### Bug Fixes
+
+* another dockerfile fix ([2d49b66](https://github.com/litara-app/litara/commit/2d49b66302b5a10ac7f096a446b40f6a9efd6ffc))
+
 ## [1.39.1](https://github.com/litara-app/litara/compare/v1.39.0...v1.39.1) (2026-05-14)
 
 
