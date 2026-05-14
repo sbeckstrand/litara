@@ -18,6 +18,7 @@ try {
 
 process.env.JWT_SECRET = 'test-secret-key-do-not-use-in-prod';
 process.env.NODE_ENV = 'test';
+process.env.HARDCOVER_API_KEY = 'test-hardcover-key';
 
 // Resolve the shared ebook-library path:
 // apps/api/test/setup/ → ../../../../test/fixtures/ebook-library/
