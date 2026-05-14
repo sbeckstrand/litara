@@ -63,8 +63,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Resolves the image version once so both the matrix build jobs and the
-  # manifest-merge job can use the same value without duplicating logic.
+  # Resolves the image version and build matrix once so both the matrix build
+  # jobs and the manifest-merge job can use the same values without duplicating logic.
   prepare:
     needs: [release]
     if: |
@@ -75,6 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.value }}
+      matrix: ${{ steps.matrix.outputs.value }}
 
     steps:
       - name: Checkout
@@ -97,6 +98,19 @@ jobs:
             echo "value=${{ needs.release.outputs.version }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Compute build matrix
+        id: matrix
+        run: |
+          PLATFORMS="${{ github.event_name == 'workflow_dispatch' && inputs.platforms || 'linux/amd64,linux/arm64' }}"
+          MATRIX='[]'
+          if echo "$PLATFORMS" | grep -q 'linux/amd64'; then
+            MATRIX=$(echo "$MATRIX" | jq '. += [{"platform":"linux/amd64","runner":"ubuntu-latest","slug":"amd64"}]')
+          fi
+          if echo "$PLATFORMS" | grep -q 'linux/arm64'; then
+            MATRIX=$(echo "$MATRIX" | jq '. += [{"platform":"linux/arm64","runner":"ubuntu-24.04-arm","slug":"arm64"}]')
+          fi
+          echo "value=$(echo "$MATRIX" | jq -c '{"include":.}')" >> $GITHUB_OUTPUT
+
   # Build each platform on a native runner to avoid QEMU SIGILL failures with
   # Node.js 20 native addons (bcrypt, etc.). Each job pushes by digest (no tag)
   # and uploads the digest for the merge job to assemble the manifest.
@@ -104,16 +118,10 @@ jobs:
     needs: [release, prepare]
     if: |
       always() &&
-      needs.prepare.result == 'success' &&
-      contains(github.event_name == 'workflow_dispatch' && inputs.platforms || 'linux/amd64,linux/arm64', matrix.platform)
+      needs.prepare.result == 'success'
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-latest
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -150,8 +158,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true
-          cache-from: type=gha,scope=build-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
-          cache-to: type=gha,mode=max,scope=build-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          cache-from: type=gha,scope=build-${{ matrix.slug }}
+          cache-to: type=gha,mode=max,scope=build-${{ matrix.slug }}
 
       - name: Export digest
         run: |
@@ -162,7 +170,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          name: digests-${{ matrix.slug }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
