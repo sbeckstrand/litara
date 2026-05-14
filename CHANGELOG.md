@@ -1,3 +1,11 @@
+## [1.39.1](https://github.com/litara-app/litara/compare/v1.39.0...v1.39.1) (2026-05-14)
+
+
+### Bug Fixes
+
+* another build fix, adding in action lint ([fcf238e](https://github.com/litara-app/litara/commit/fcf238ece0e819b32c71e985892c438248b92b54))
+* fixing arm64 build ([bbf583a](https://github.com/litara-app/litara/commit/bbf583aa7297de389f6392da3df242d568d3704f))
+
 # [1.39.0](https://github.com/litara-app/litara/compare/v1.38.0...v1.39.0) (2026-05-14)
 
 
