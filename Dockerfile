@@ -13,8 +13,9 @@ COPY packages/mobi-parser/package.json ./packages/mobi-parser/
 COPY packages/cbz-parser/package.json ./packages/cbz-parser/
 
 # Skip lifecycle scripts so prek install doesn't fail without a .git directory,
-# then rebuild native addons (e.g. bcrypt) from source.
-RUN npm ci --ignore-scripts && npm rebuild
+# then rebuild bcrypt's native addon from source. Prisma generate runs later
+# once the schema is available (see below).
+RUN npm ci --ignore-scripts && npm rebuild bcrypt
 
 # Copy source
 COPY apps/api ./apps/api
