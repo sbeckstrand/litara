@@ -1,3 +1,21 @@
+# [1.39.0](https://github.com/litara-app/litara/compare/v1.38.0...v1.39.0) (2026-05-14)
+
+
+### Bug Fixes
+
+* eslint fixes ([49c2789](https://github.com/litara-app/litara/commit/49c278949d1f9fa0810e216a0447cf64b07d1adb))
+* fixing lint errors ([6c4a86c](https://github.com/litara-app/litara/commit/6c4a86cf89d19c96bac1a8f6294a7d05c48d0dce))
+* fixing metadata tests and ensure that field sources overide values ([d462024](https://github.com/litara-app/litara/commit/d462024cbcb0724758f87fa7a3014163bed47b7f))
+* more lint fixes ([d1fb71c](https://github.com/litara-app/litara/commit/d1fb71c37500b2f4ba439b9b3eae6bc79d09c8d1))
+* more lint fixes, pin eslint version ([ca20a34](https://github.com/litara-app/litara/commit/ca20a349b6a8d1c9cee3ca12d8c4b0081b7fe5f8))
+* more test fixes ([d5ec9a2](https://github.com/litara-app/litara/commit/d5ec9a25f4aba2db729817d67917bb1e6231dc78))
+
+
+### Features
+
+* allow cover replacement ([c8460fa](https://github.com/litara-app/litara/commit/c8460fafb9c2f8f3e677c907c6bc6f739aff469d))
+* goodreads may block scraping, adding playwrite to mimic user interaction ([0f76307](https://github.com/litara-app/litara/commit/0f76307ba8846b6ca51d9de3d07888446fe5e7f3))
+
 # [1.38.0](https://github.com/litara-app/litara/compare/v1.37.0...v1.38.0) (2026-05-13)
 
 
