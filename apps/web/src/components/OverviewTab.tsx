@@ -368,6 +368,7 @@ export function OverviewTab({
                   : null
               }
             />
+            <DetailRow label="ASIN" value={detail.asin} />
           </SimpleGrid>
           {detail.tags.length > 0 && (
             <Box mt="sm">

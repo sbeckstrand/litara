@@ -14,12 +14,13 @@ All metadata enrichment settings and bulk runs are available to admin users only
 
 The **Metadata Sources** card shows every configured provider and lets you enable or disable them individually.
 
-| Provider         | Notes                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------- |
-| **Open Library** | Free, no key required. Used as the primary ISBN-13 source.                                              |
-| **Google Books** | Free with rate limits (~100 req/day). Set `GOOGLE_BOOKS_API_KEY` in your environment for 1,000 req/day. |
-| **Hardcover**    | Requires `HARDCOVER_API_KEY`. See [Configuration](./configuration.md#hardcover-api-key).                |
-| **Goodreads**    | Community ratings and IDs.                                                                              |
+| Provider            | Notes                                                                                                                         |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Open Library**    | Free, no key required. Used as the primary ISBN-13 source.                                                                    |
+| **Google Books**    | Free with rate limits (~100 req/day). Set `GOOGLE_BOOKS_API_KEY` in your environment for 1,000 req/day.                       |
+| **Hardcover**       | Requires `HARDCOVER_API_KEY`. See [Configuration](./configuration.md#hardcover-api-key).                                      |
+| **Goodreads**       | Community ratings and IDs.                                                                                                    |
+| **Audnexus (Beta)** | Free, no key required. Audiobook metadata (narrator, series, genres, cover) via Audible ASIN. See [Audnexus](#audnexus-beta). |
 
 Disabling a provider automatically reassigns any field mappings that were using it to the next available enabled provider.
 
@@ -64,6 +65,41 @@ When guided mode is on and your run scope has 50 or fewer books, a disambiguatio
 - Click **Skip** to accept the top result without choosing.
 - Use **Back** and **Next** to navigate between books.
 - Click **Start Run** on the last book to submit.
+
+## Audnexus (Beta)
+
+[Audnexus](https://audnex.us) is a community-hosted, keyless REST API purpose-built for audiobook metadata. It is supported as an **optional, disabled-by-default** provider.
+
+### What it provides
+
+- Narrator names (stored as tags in the format `Narrator: <name>`)
+- Series name and position
+- Genres
+- Cover art
+- Description / summary
+- Publisher
+
+### Requirements
+
+Audnexus lookups require an **ASIN** (Amazon Standard Identification Number) on the book record. Books without an ASIN are silently skipped — Audnexus has no title/author search endpoint.
+
+You can set the ASIN on any book from its **Edit Metadata** tab. When searching metadata for a book that has an ASIN, the **Audnexus** option appears in the provider selector automatically.
+
+### Enabling Audnexus in bulk enrichment
+
+Audnexus fields are disabled by default in **Field Sources**. To use them:
+
+1. Go to **Admin Settings → Metadata → Field Sources**.
+2. Find the fields you want Audnexus to supply (e.g. _Genres_, _Description_) and select **Audnexus** from the provider dropdown and enable them.
+3. Click **Save Configuration**.
+
+Only books with an ASIN will be enriched by Audnexus during a bulk run; books without one are unaffected.
+
+### Reliability
+
+Audnexus (`api.audnex.us`) is community-hosted with no SLA. If the service is unavailable, Audnexus results are treated as a soft miss and enrichment continues with the remaining providers — no data is lost and no error is surfaced.
+
+To point Litara at a self-hosted Audnexus instance, set `AUDNEXUS_BASE_URL` in your environment.
 
 ### Tracking progress
 

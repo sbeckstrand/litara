@@ -221,8 +221,11 @@ export class SeriesService {
         .filter((s): s is number => s !== null),
     );
 
-    // Select provider — respect the admin enable/disable setting stored in ServerSettings
+    // Provider chain: Hardcover → Goodreads
     let roster: SeriesRosterResult | null = null;
+    let activeProvider = 'goodreads';
+
+    // 1. Hardcover (requires API key + enabled setting)
     const hardcoverSetting = await this.db.serverSettings.findUnique({
       where: { key: 'metadata_provider_hardcover_enabled' },
       select: { value: true },
@@ -232,107 +235,77 @@ export class SeriesService {
 
     if (hardcoverEnabled) {
       roster = await this.hardcover.fetchSeriesByName(series.name);
+      if (roster) activeProvider = 'hardcover';
     }
 
+    // 2. Goodreads (scrape-based, WAF-blocked responses return null)
     if (!roster) {
-      // Goodreads fallback — check it's enabled before using it
       const goodreadsSetting = await this.db.serverSettings.findUnique({
         where: { key: 'metadata_provider_goodreads_enabled' },
         select: { value: true },
       });
       const goodreadsEnabled = goodreadsSetting?.value !== 'false';
 
-      if (!goodreadsEnabled) {
-        throw new BadGatewayException(
-          'No metadata provider available for this series: Hardcover is disabled or not configured and Goodreads is disabled.',
-        );
-      }
+      if (goodreadsEnabled) {
+        let goodreadsId: string | null = null;
 
-      let goodreadsId: string | null = null;
-
-      // Prefer a stored goodreadsId — avoids an extra search round-trip
-      const bookWithGoodreads = await this.db.book.findFirst({
-        where: {
-          series: { some: { seriesId } },
-          goodreadsId: { not: null },
-        },
-        select: { goodreadsId: true },
-      });
-      goodreadsId = bookWithGoodreads?.goodreadsId ?? null;
-
-      // No stored goodreadsId — search Goodreads by title to discover one
-      if (!goodreadsId) {
-        const anyBook = await this.db.book.findFirst({
-          where: { series: { some: { seriesId } } },
-          orderBy: [{ publishedDate: 'asc' }, { title: 'asc' }],
-          select: {
-            title: true,
-            authors: { include: { author: { select: { name: true } } } },
+        // Prefer a stored goodreadsId — avoids an extra search round-trip
+        const bookWithGoodreads = await this.db.book.findFirst({
+          where: {
+            series: { some: { seriesId } },
+            goodreadsId: { not: null },
           },
+          select: { goodreadsId: true },
         });
+        goodreadsId = bookWithGoodreads?.goodreadsId ?? null;
 
-        if (!anyBook) {
-          throw new BadGatewayException(
-            'No books found in this series to search Goodreads with.',
-          );
-        }
+        // No stored goodreadsId — search Goodreads by title to discover one
+        if (!goodreadsId) {
+          const anyBook = await this.db.book.findFirst({
+            where: { series: { some: { seriesId } } },
+            orderBy: [{ publishedDate: 'asc' }, { title: 'asc' }],
+            select: {
+              title: true,
+              authors: { include: { author: { select: { name: true } } } },
+            },
+          });
 
-        const firstAuthor = anyBook.authors[0]?.author.name;
-        this.logger.debug(
-          `enrichSeries "${series.name}": no stored Goodreads ID — searching by title "${anyBook.title}"`,
-        );
-
-        // Try progressively simpler queries until one returns a result
-        const queries: Array<{ title: string; author?: string }> = [
-          { title: anyBook.title, author: firstAuthor },
-          { title: anyBook.title },
-          { title: series.name },
-        ];
-
-        try {
-          for (const q of queries) {
-            const result = await this.goodreads.searchByTitleAuthor(
-              q.title,
-              q.author,
+          if (anyBook) {
+            const firstAuthor = anyBook.authors[0]?.author.name;
+            this.logger.debug(
+              `enrichSeries "${series.name}": no stored Goodreads ID — searching by title "${anyBook.title}"`,
             );
-            if (result?.goodreadsId) {
-              goodreadsId = result.goodreadsId;
-              break;
+
+            const queries: Array<{ title: string; author?: string }> = [
+              { title: anyBook.title, author: firstAuthor },
+              { title: anyBook.title },
+              { title: series.name },
+            ];
+
+            for (const q of queries) {
+              const result = await this.goodreads.searchByTitleAuthor(
+                q.title,
+                q.author,
+              );
+              if (result?.goodreadsId) {
+                goodreadsId = result.goodreadsId;
+                break;
+              }
             }
           }
-        } catch (err) {
-          if ((err as Error).message === 'GOODREADS_WAF_BLOCKED') {
-            throw new BadGatewayException(
-              'Goodreads is blocked by AWS WAF and cannot be scraped from this server. ' +
-                'Enable Hardcover for series enrichment, or enrich individual books first to store their Goodreads IDs.',
-            );
-          }
-          throw err;
         }
-      }
 
-      if (!goodreadsId) {
-        throw new BadGatewayException(
-          'Could not find this series on Goodreads — try enriching a book first to store its Goodreads ID.',
-        );
-      }
-
-      try {
-        roster = await this.goodreads.fetchSeriesByGoodreadsId(goodreadsId);
-      } catch (err) {
-        if ((err as Error).message === 'GOODREADS_WAF_BLOCKED') {
-          throw new BadGatewayException(
-            'Goodreads is blocked by AWS WAF and cannot be scraped from this server. ' +
-              'Enable Hardcover for series enrichment.',
-          );
+        if (goodreadsId) {
+          roster = await this.goodreads.fetchSeriesByGoodreadsId(goodreadsId);
+          if (roster) activeProvider = 'goodreads';
         }
-        throw err;
       }
     }
 
     if (!roster) {
       throw new BadGatewayException(
-        'Metadata provider returned no results for this series.',
+        'No metadata provider returned results for this series. ' +
+          'Try enabling Hardcover, or enrich individual books first to store their Goodreads IDs.',
       );
     }
 
@@ -351,7 +324,7 @@ export class SeriesService {
 
     let slotsCreated = 0;
     let slotsUpdated = 0;
-    const provider = hardcoverEnabled ? 'hardcover' : 'goodreads';
+    const provider = activeProvider;
 
     for (const book of missing) {
       // Download cover (non-fatal)

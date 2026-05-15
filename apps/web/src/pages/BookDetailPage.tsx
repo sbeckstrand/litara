@@ -77,6 +77,7 @@ function detailToEdited(d: BookDetail): EditedFields {
     description: d.description ?? '',
     isbn13: d.isbn13 ?? '',
     isbn10: d.isbn10 ?? '',
+    asin: d.asin ?? '',
     publisher: d.publisher ?? '',
     publishedYear: d.publishedDate
       ? String(new Date(d.publishedDate).getUTCFullYear())
@@ -305,6 +306,7 @@ export function BookDetailPage() {
         description: editedFields.description || null,
         isbn13: editedFields.isbn13 || null,
         isbn10: editedFields.isbn10 || null,
+        asin: editedFields.asin || null,
         publisher: editedFields.publisher || null,
         publishedDate: publishedDate ?? null,
         language: editedFields.language || null,

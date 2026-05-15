@@ -17,6 +17,7 @@ import {
   IconSearch,
   IconArrowLeft,
   IconExternalLink,
+  IconInfoCircle,
 } from '@tabler/icons-react';
 import { pushToast } from '../utils/toast';
 import { api } from '../utils/api';
@@ -110,11 +111,14 @@ export function SearchMetadataTab({
     api
       .get<Array<{ id: string; label: string }>>('/settings/metadata-providers')
       .then((res) => {
-        setAvailableProviders(res.data);
-        setSearchProviders(res.data.map((p) => p.id));
+        const filtered = detail.asin
+          ? res.data
+          : res.data.filter((p) => p.id !== 'audnexus');
+        setAvailableProviders(filtered);
+        setSearchProviders(filtered.map((p) => p.id));
       })
       .catch(() => {});
-  }, []);
+  }, [detail.asin]);
   const [searchTitle, setSearchTitle] = useState(detail.title);
   const [searchAuthor, setSearchAuthor] = useState(detail.authors[0] ?? '');
   const [searching, setSearching] = useState(false);
@@ -134,7 +138,7 @@ export function SearchMetadataTab({
     setSearchHasRun(false);
     try {
       const params = new URLSearchParams();
-      if (searchIsbn) params.set('isbn', searchIsbn);
+      params.set('isbn', searchIsbn);
       if (searchTitle) params.set('title', searchTitle);
       if (searchAuthor) params.set('author', searchAuthor);
       const labelMap = new Map(availableProviders.map((p) => [p.id, p.label]));
@@ -145,16 +149,20 @@ export function SearchMetadataTab({
           .catch(() => ({ provider: p, results: [] as MetadataResult[] })),
       );
       const raw = await Promise.all(calls);
+
+      const audnexusRaw = raw.find((r) => r.provider === 'audnexus');
+      if (audnexusRaw && audnexusRaw.results.length === 0 && detail.asin) {
+        pushToast(`Audnexus: no audiobook found for ASIN ${detail.asin}`, {
+          color: 'yellow',
+        });
+      }
+
       setSearchResults(
         raw.flatMap((r) =>
           r.results
             .filter((res) => countResultFields(res) > 0)
             .map((res) => ({
-              provider: r.provider as
-                | 'open-library'
-                | 'google-books'
-                | 'goodreads'
-                | 'hardcover',
+              provider: r.provider as MetadataSearchResult['provider'],
               providerLabel: labelMap.get(r.provider) ?? r.provider,
               result: res,
             })),
@@ -326,6 +334,15 @@ export function SearchMetadataTab({
             Search
           </Button>
         </Group>
+
+        {searchProviders.includes('audnexus') && (
+          <Group gap={6} mb="xs" align="center">
+            <IconInfoCircle size={13} color="var(--mantine-color-dimmed)" />
+            <Text size="xs" c="dimmed">
+              Audnexus searches by ASIN only — title and author are ignored.
+            </Text>
+          </Group>
+        )}
 
         {searchHasRun && searchResults.length === 0 && (
           <Text c="dimmed" ta="center">

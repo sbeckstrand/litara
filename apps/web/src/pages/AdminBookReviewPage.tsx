@@ -99,6 +99,7 @@ function pendingBookToEditedFields(book: PendingBook): EditedFields {
     seriesName: book.seriesName ?? '',
     seriesPosition: book.seriesPosition ?? '',
     seriesTotalBooks: book.seriesTotalBooks ?? '',
+    asin: '',
   };
 }
 
@@ -137,6 +138,7 @@ function pendingBookToDetail(book: PendingBook): BookDetail {
     description: book.description ?? null,
     isbn13: book.isbn13 ?? null,
     isbn10: book.isbn10 ?? null,
+    asin: null,
     goodreadsId: null,
     goodreadsRating: null,
     publisher: book.publisher ?? null,

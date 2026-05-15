@@ -7,7 +7,7 @@ import { GoogleBooksService } from './providers/google-books.service';
 import { OpenLibraryService } from './providers/open-library.service';
 import { GoodreadsService } from './providers/goodreads.service';
 import { HardcoverService } from './providers/hardcover.service';
-import { PlaywrightService } from './providers/playwright.service';
+import { AudnexusService } from './providers/audnexus.service';
 
 @Module({
   imports: [DatabaseModule, ConfigModule],
@@ -16,9 +16,9 @@ import { PlaywrightService } from './providers/playwright.service';
     MetadataService,
     GoogleBooksService,
     OpenLibraryService,
-    PlaywrightService,
     GoodreadsService,
     HardcoverService,
+    AudnexusService,
   ],
   exports: [
     MetadataService,

@@ -44,6 +44,7 @@ export interface BookDetail {
   isbn10: string | null;
   goodreadsId: string | null;
   goodreadsRating: number | null;
+  asin: string | null;
   publisher: string | null;
   publishedDate: string | null;
   language: string | null;
@@ -99,6 +100,7 @@ export interface EditedFields {
   description: string;
   isbn13: string;
   isbn10: string;
+  asin: string;
   publisher: string;
   publishedYear: string;
   language: string;
@@ -118,7 +120,12 @@ import type { MetadataResult } from '@litara/book-types';
 export type { MetadataResult };
 
 export interface MetadataSearchResult {
-  provider: 'open-library' | 'google-books' | 'goodreads' | 'hardcover';
+  provider:
+    | 'open-library'
+    | 'google-books'
+    | 'goodreads'
+    | 'hardcover'
+    | 'audnexus';
   providerLabel: string;
   result: MetadataResult;
 }

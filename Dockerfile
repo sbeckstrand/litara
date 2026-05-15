@@ -39,7 +39,11 @@ FROM node:20-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
+<<<<<<< Updated upstream
 # libstdc++ is required to load native addons (e.g., bcrypt) on Alpine
+=======
+# libstdc++ is required for native addons (e.g., bcrypt).
+>>>>>>> Stashed changes
 RUN apk add --no-cache libstdc++
 
 # Production node_modules (pruned)

@@ -185,6 +185,13 @@ export function EditMetadataTab({
               placeholder="ISBN-10..."
             />
             <TextInput
+              label="ASIN"
+              size="xs"
+              value={editedFields.asin}
+              onChange={(e) => updateField('asin', e.currentTarget.value)}
+              placeholder="ASIN..."
+            />
+            <TextInput
               label={
                 <FieldLabel
                   label="Publisher"

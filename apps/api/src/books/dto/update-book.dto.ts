@@ -22,6 +22,7 @@ export class UpdateBookDto {
   // Cover (fetched from URL and stored as coverData)
   coverUrl?: string;
   goodreadsRating?: number;
+  asin?: string | null;
 
   // Relational
   authors?: string[];

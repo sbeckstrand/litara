@@ -37,10 +37,6 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface GoodreadsPlaywrightSettings {
-  enabled: boolean;
-}
-
 interface FieldConfigItem {
   field: string;
   provider: string;
@@ -1066,56 +1062,6 @@ function SeriesEnrichmentSection({
   );
 }
 
-// ── Goodreads Playwright Toggle ───────────────────────────────────────────────
-
-function GoodreadsPlaywrightSection() {
-  const [settings, setSettings] = useState<GoodreadsPlaywrightSettings | null>(
-    null,
-  );
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    api
-      .get<GoodreadsPlaywrightSettings>('/admin/settings/goodreads-playwright')
-      .then((r) => setSettings(r.data))
-      .catch(() => {});
-  }, []);
-
-  async function handleToggle(enabled: boolean) {
-    if (!settings) return;
-    setSaving(true);
-    try {
-      await api.patch('/admin/settings/goodreads-playwright', { enabled });
-      setSettings((s) => (s ? { ...s, enabled } : s));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!settings) return <Skeleton height={60} radius="md" />;
-
-  return (
-    <Paper withBorder p="md" radius="md">
-      <Stack gap="sm">
-        <Group justify="space-between">
-          <Title order={4}>Goodreads Playwright Scraping</Title>
-          <Switch
-            checked={settings.enabled}
-            onChange={(e) => void handleToggle(e.currentTarget.checked)}
-            disabled={saving}
-            label={settings.enabled ? 'Enabled' : 'Disabled'}
-          />
-        </Group>
-        <Text size="sm" c="dimmed">
-          Uses a headless Chromium browser to scrape Goodreads when AWS WAF
-          blocks direct HTTP requests. A server restart is required after
-          changing this setting.
-        </Text>
-      </Stack>
-    </Paper>
-  );
-}
-
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export function MetadataMatchingPage({
@@ -1130,8 +1076,6 @@ export function MetadataMatchingPage({
   return (
     <Stack gap="lg">
       <MetadataSourcesSection onProvidersChange={handleProvidersChange} />
-
-      <GoodreadsPlaywrightSection />
 
       <Paper withBorder p="md" radius="md">
         <Stack gap="sm">
