@@ -172,6 +172,30 @@ This endpoint is used by the **Admin Book Review** page to allow admins to searc
 
 ---
 
+## Providers
+
+| Provider ID    | Class                | Key required | Lookup strategy                |
+| -------------- | -------------------- | ------------ | ------------------------------ |
+| `open-library` | `OpenLibraryService` | No           | ISBN-13, then title/author     |
+| `google-books` | `GoogleBooksService` | Optional     | ISBN-13, then title/author     |
+| `goodreads`    | `GoodreadsService`   | No           | ISBN-13, then title/author     |
+| `hardcover`    | `HardcoverService`   | Yes          | ISBN-13, then title/author     |
+| `audnexus`     | `AudnexusService`    | No           | ASIN only (`GET /books/:asin`) |
+
+`PROVIDER_ORDER` in `metadata.service.ts` defines the canonical call order used by both `MetadataService` and `BulkMetadataService`. Add new providers there first.
+
+### Audnexus
+
+`AudnexusService` is an ASIN-only provider backed by the community-hosted [`api.audnex.us`](https://audnex.us) REST API. It exposes a single public method:
+
+```typescript
+searchByAsin(asin: string): Promise<MetadataResult | null>
+```
+
+When a book has no ASIN the service is never called — `BulkMetadataService` checks `book.asin` before dispatching. The provider is disabled by default in `DEFAULT_FIELD_CONFIG`; users opt in via the Field Sources UI.
+
+The base URL can be overridden with the optional `AUDNEXUS_BASE_URL` env var (useful for self-hosted instances). All HTTP failures (non-2xx, network errors) are treated as soft misses and return `null`.
+
 ## Architecture notes
 
 - **Provider chaining** — `BulkMetadataService` always calls the ISBN-13 provider first. The resolved ISBN is injected into `EnrichInput.isbn13` for every subsequent provider call, improving match accuracy.

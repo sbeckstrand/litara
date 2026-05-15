@@ -89,6 +89,12 @@ export function buildRows(
       proposed: isValidIsbn10(result.isbn10) ? result.isbn10 : undefined,
     },
     {
+      label: 'ASIN',
+      field: 'asin',
+      current: detail.asin,
+      proposed: result.asin,
+    },
+    {
       label: 'Tags',
       field: 'tags',
       current: detail.tags.join(', '),
@@ -178,6 +184,7 @@ export function buildApplyPayload(
     p.isbn13 = result.isbn13;
   if (should('isbn10') && isValidIsbn10(result.isbn10))
     p.isbn10 = result.isbn10;
+  if (should('asin') && result.asin) p.asin = result.asin;
   if (should('tags') && result.categories?.length) p.tags = result.categories;
   if (should('genres') && result.genres?.length) p.genres = result.genres;
   if (should('moods') && result.moods?.length) p.moods = result.moods;

@@ -110,6 +110,9 @@ export class BookDetailDto {
   @ApiProperty({ nullable: true })
   goodreadsRating: number | null;
 
+  @ApiProperty({ nullable: true })
+  asin: string | null;
+
   @ApiProperty({ type: [String] })
   tags: string[];
 

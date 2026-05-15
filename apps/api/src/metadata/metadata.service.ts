@@ -5,6 +5,7 @@ import { GoogleBooksService } from './providers/google-books.service';
 import { OpenLibraryService } from './providers/open-library.service';
 import { GoodreadsService } from './providers/goodreads.service';
 import { HardcoverService } from './providers/hardcover.service';
+import { AudnexusService } from './providers/audnexus.service';
 import { MetadataResult } from './interfaces/metadata-result.interface';
 
 export enum MetadataProvider {
@@ -12,6 +13,7 @@ export enum MetadataProvider {
   OpenLibrary = 'open-library',
   Goodreads = 'goodreads',
   Hardcover = 'hardcover',
+  Audnexus = 'audnexus',
 }
 
 const PROVIDERS_CONFIG = [
@@ -39,12 +41,19 @@ const PROVIDERS_CONFIG = [
     requiresApiKey: true,
     envKey: 'HARDCOVER_API_KEY' as string | null,
   },
+  {
+    id: MetadataProvider.Audnexus,
+    label: 'Audnexus (Beta)',
+    requiresApiKey: false,
+    envKey: null as string | null,
+  },
 ] as const;
 
 interface EnrichInput {
   title: string;
   authors: string[];
   isbn13?: string;
+  asin?: string;
 }
 
 interface FieldConfigItem {
@@ -66,7 +75,7 @@ export const DEFAULT_FIELD_CONFIG: FieldConfigItem[] = [
   { field: 'isbn13', provider: 'open-library', enabled: true },
   { field: 'isbn10', provider: 'open-library', enabled: true },
   { field: 'pageCount', provider: 'open-library', enabled: true },
-  { field: 'genres', provider: 'goodreads', enabled: true },
+  { field: 'genres', provider: 'hardcover', enabled: true },
   { field: 'tags', provider: 'open-library', enabled: true },
   { field: 'moods', provider: 'open-library', enabled: true },
   { field: 'seriesName', provider: 'hardcover', enabled: true },
@@ -77,14 +86,18 @@ export const DEFAULT_FIELD_CONFIG: FieldConfigItem[] = [
   { field: 'goodreadsId', provider: 'open-library', enabled: true },
   { field: 'goodreadsRating', provider: 'goodreads', enabled: true },
   { field: 'asin', provider: 'open-library', enabled: true },
+  // Audnexus — audiobook-focused; requires ASIN; disabled by default
+  { field: 'description', provider: 'audnexus', enabled: false },
+  { field: 'genres', provider: 'audnexus', enabled: false },
 ];
 
 // Canonical provider call order for multi-provider enrichment
-const PROVIDER_ORDER: MetadataProvider[] = [
+export const PROVIDER_ORDER: MetadataProvider[] = [
   MetadataProvider.OpenLibrary,
   MetadataProvider.GoogleBooks,
   MetadataProvider.Goodreads,
   MetadataProvider.Hardcover,
+  MetadataProvider.Audnexus,
 ];
 
 @Injectable()
@@ -98,6 +111,7 @@ export class MetadataService {
     private readonly openLibrary: OpenLibraryService,
     private readonly goodreads: GoodreadsService,
     private readonly hardcover: HardcoverService,
+    private readonly audnexus: AudnexusService,
   ) {}
 
   async getProviderStatuses() {
@@ -179,6 +193,8 @@ export class MetadataService {
       result = input.isbn13
         ? await this.hardcover.searchByIsbn(input.isbn13)
         : await this.hardcover.searchByTitleAuthor(input.title, firstAuthor);
+    } else if (provider === MetadataProvider.Audnexus) {
+      result = input.asin ? await this.audnexus.searchByAsin(input.asin) : null;
     } else {
       result = input.isbn13
         ? await this.openLibrary.searchByIsbn(input.isbn13)
@@ -209,6 +225,10 @@ export class MetadataService {
       return this.goodreads.searchManyByTitleAuthor(input.title, firstAuthor);
     } else if (provider === MetadataProvider.Hardcover) {
       return this.hardcover.searchManyByTitleAuthor(input.title, firstAuthor);
+    } else if (provider === MetadataProvider.Audnexus) {
+      if (!input.asin) return [];
+      const single = await this.audnexus.searchByAsin(input.asin);
+      return single ? [single] : [];
     } else {
       return this.openLibrary.searchManyByTitleAuthor(input.title, firstAuthor);
     }
@@ -250,7 +270,7 @@ export class MetadataService {
     if (result.description && !locked.has('description'))
       update.description = result.description;
     if (result.publishedDate && !locked.has('publishedDate'))
-      update.publishedDate = result.publishedDate;
+      update.publishedDate = new Date(result.publishedDate).toISOString();
     if (result.publisher && !locked.has('publisher'))
       update.publisher = result.publisher;
     if (result.language && !locked.has('language'))

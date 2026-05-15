@@ -6,7 +6,6 @@ import type {
   SeriesBookSlotData,
   SeriesRosterResult,
 } from '../interfaces/series-roster.interface';
-import { PlaywrightService } from './playwright.service';
 
 const SEARCH_URL = 'https://www.goodreads.com/search?q=';
 const HEADERS = {
@@ -30,8 +29,6 @@ interface GoodreadsJsonLd {
 @Injectable()
 export class GoodreadsService {
   private readonly logger = new Logger(GoodreadsService.name);
-
-  constructor(private readonly playwright: PlaywrightService) {}
 
   async searchByIsbn(isbn: string): Promise<MetadataResult | null> {
     this.logger.debug(`Searching Goodreads for ISBN: ${isbn}`);
@@ -464,15 +461,8 @@ export class GoodreadsService {
     const html = await response.text();
 
     if (html.includes('awsWaf') || html.includes('aws-waf-token')) {
-      if (this.playwright.isAvailable()) {
-        this.logger.debug(
-          'Goodreads WAF challenge detected — retrying with Playwright',
-        );
-        return this.playwright.fetchHtml(url);
-      }
       this.logger.warn(
-        'Goodreads is returning an AWS WAF challenge page — scraping is blocked. ' +
-          'Enable goodreads_playwright_enabled in server settings to bypass.',
+        'Goodreads is returning an AWS WAF challenge page — scraping is blocked.',
       );
       throw new Error('GOODREADS_WAF_BLOCKED');
     }

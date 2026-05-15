@@ -4,6 +4,7 @@ import {
   MetadataService,
   MetadataProvider,
   DEFAULT_FIELD_CONFIG,
+  PROVIDER_ORDER,
 } from '../metadata/metadata.service';
 import { OpenLibraryService } from '../metadata/providers/open-library.service';
 import { BooksService } from '../books/books.service';
@@ -279,13 +280,6 @@ export class BulkMetadataService {
         providerFields.set(provider, existing);
       }
 
-      // Canonical provider call order — OpenLibrary first to resolve ISBN
-      const PROVIDER_ORDER: MetadataProvider[] = [
-        MetadataProvider.OpenLibrary,
-        MetadataProvider.GoogleBooks,
-        MetadataProvider.Goodreads,
-        MetadataProvider.Hardcover,
-      ];
       const enabledProviders = await this.metadataService.getEnabledProviders();
       const enabledIds = new Set(enabledProviders.map((p) => p.id));
       const orderedProviders = PROVIDER_ORDER.filter(
@@ -342,6 +336,7 @@ export class BulkMetadataService {
               title: book.title,
               authors: book.authors.map((ba) => ba.author.name),
               isbn13: resolvedIsbn13,
+              asin: book.asin ?? undefined,
             });
           }
 
@@ -486,7 +481,7 @@ export class BulkMetadataService {
       result.publishedDate &&
       (overwrite || isEmpty(book.publishedDate))
     ) {
-      update.publishedDate = result.publishedDate;
+      update.publishedDate = new Date(result.publishedDate).toISOString();
     }
     if (
       shouldSet('language') &&

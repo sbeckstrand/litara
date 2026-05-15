@@ -262,6 +262,7 @@ export class BooksService {
       isbn10: book.isbn10,
       goodreadsId: book.goodreadsId,
       goodreadsRating: book.goodreadsRating,
+      asin: book.asin,
       publisher: book.publisher,
       publishedDate: book.publishedDate,
       language: book.language,
@@ -416,6 +417,7 @@ export class BooksService {
     if (dto.ageRating !== undefined) bookUpdate.ageRating = dto.ageRating;
     if (dto.goodreadsRating !== undefined)
       bookUpdate.goodreadsRating = dto.goodreadsRating;
+    if (dto.asin !== undefined) bookUpdate.asin = dto.asin;
     if (dto.lockedFields !== undefined) {
       bookUpdate.lockedFields = JSON.stringify(dto.lockedFields);
     }
@@ -629,6 +631,7 @@ export class BooksService {
       title: book.title,
       authors: book.authors.map((ba) => ba.author.name),
       isbn13: book.isbn13 ?? undefined,
+      asin: book.asin ?? undefined,
     });
 
     return this.findOne(bookId, userId);
@@ -650,7 +653,8 @@ export class BooksService {
       authors: overrides?.author
         ? [overrides.author]
         : book.authors.map((ba) => ba.author.name),
-      isbn13: overrides?.isbn ?? book.isbn13 ?? undefined,
+      isbn13: overrides?.isbn || undefined,
+      asin: book.asin ?? undefined,
     });
   }
 

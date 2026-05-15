@@ -126,7 +126,7 @@ export class AuthorsService {
       this.logger.warn(
         `Failed to fetch author data for "${author.name}": ${(err as Error).message}`,
       );
-      data = { photoData: null, biography: null, goodreadsId: null };
+      return this.findOne(id);
     }
     await this.saveEnrichmentData(id, data);
     return this.findOne(id);
@@ -163,14 +163,15 @@ export class AuthorsService {
     id: string,
     { photoData, biography, goodreadsId }: AuthorEnrichmentData,
   ): Promise<void> {
-    await this.db.author.update({
-      where: { id },
-      data: {
-        photoData: photoData as unknown as Uint8Array<ArrayBuffer>,
-        ...(biography ? { biography } : {}),
-        ...(goodreadsId ? { goodreadsId } : {}),
-      },
-    });
+    const update = {
+      ...(photoData !== null
+        ? { photoData: photoData as unknown as Uint8Array<ArrayBuffer> }
+        : {}),
+      ...(biography ? { biography } : {}),
+      ...(goodreadsId ? { goodreadsId } : {}),
+    };
+    if (Object.keys(update).length === 0) return;
+    await this.db.author.update({ where: { id }, data: update });
   }
 
   private async runBulkEnrichment(
