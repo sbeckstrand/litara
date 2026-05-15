@@ -1,3 +1,16 @@
+# [1.40.0](https://github.com/litara-app/litara/compare/v1.39.2...v1.40.0) (2026-05-15)
+
+
+### Bug Fixes
+
+* archive.org trusted source for author photos ([5795e18](https://github.com/litara-app/litara/commit/5795e185ce72991951736358591300dca25b958a))
+* dockerfile merge conflict ([0144891](https://github.com/litara-app/litara/commit/014489158530b7b9e2234885ee4c8e5f068d2b64))
+
+
+### Features
+
+* adding in audnexus, remove playwrite, don't apply empty author ([ba75345](https://github.com/litara-app/litara/commit/ba7534500dadeeeee2b6ec01b0697109105ef1f7))
+
 ## [1.39.2](https://github.com/litara-app/litara/compare/v1.39.1...v1.39.2) (2026-05-14)
 
 
