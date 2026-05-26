@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { DatabaseService } from '../database/database.service';
 import { MetadataService } from '../metadata/metadata.service';
 import * as glob from 'fast-glob';
@@ -89,15 +90,34 @@ export class LibraryScannerService implements OnModuleInit, OnModuleDestroy {
   async triggerFullScanTask(
     rescanMetadata = false,
   ): Promise<{ taskId: string }> {
-    const task = await this.prisma.task.create({
-      data: {
-        type: 'LIBRARY_SCAN',
-        status: 'PENDING',
-        payload: JSON.stringify({ processed: 0, total: 0, currentFile: '' }),
-      },
-    });
-    void this.runFullScanTask(task.id, rescanMetadata);
-    return { taskId: task.id };
+    try {
+      const task = await this.prisma.task.create({
+        data: {
+          type: 'LIBRARY_SCAN',
+          status: 'PENDING',
+          payload: JSON.stringify({ processed: 0, total: 0, currentFile: '' }),
+        },
+      });
+      void this.runFullScanTask(task.id, rescanMetadata);
+      return { taskId: task.id };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existing = await this.prisma.task.findFirst({
+          where: { type: 'LIBRARY_SCAN', status: { in: ['PENDING', 'PROCESSING'] } },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (existing) {
+          this.logger.log(
+            `Library scan already active (task ${existing.id}); skipping duplicate`,
+          );
+          return { taskId: existing.id };
+        }
+      }
+      throw err;
+    }
   }
 
   private async runFullScanTask(
