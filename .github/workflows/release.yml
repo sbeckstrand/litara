@@ -135,10 +135,9 @@ jobs:
 
       - name: Checkout release tag
         if: github.event_name == 'push'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: v${{ needs.prepare.outputs.version }}
+        run: |
+          git fetch --tags --force origin
+          git checkout v${{ needs.prepare.outputs.version }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
