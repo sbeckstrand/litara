@@ -75,6 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.value }}
+      sha: ${{ steps.version.outputs.sha }}
       matrix: ${{ steps.matrix.outputs.value }}
 
     steps:
@@ -86,16 +87,19 @@ jobs:
       - name: Determine version
         id: version
         run: |
+          git fetch --tags origin
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             if [ -n "${{ inputs.version }}" ]; then
               echo "value=${{ inputs.version }}" >> $GITHUB_OUTPUT
+              echo "sha=$(git rev-list -n 1 "v${{ inputs.version }}")" >> $GITHUB_OUTPUT
             else
-              git fetch --tags
               LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]' | head -1 || echo "")
               echo "value=${LATEST_TAG#v}" >> $GITHUB_OUTPUT
+              echo "sha=$(git rev-list -n 1 "$LATEST_TAG")" >> $GITHUB_OUTPUT
             fi
           else
             echo "value=${{ needs.release.outputs.version }}" >> $GITHUB_OUTPUT
+            echo "sha=$(git rev-list -n 1 "v${{ needs.release.outputs.version }}")" >> $GITHUB_OUTPUT
           fi
 
       - name: Compute build matrix
@@ -131,13 +135,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
-      - name: Checkout release tag
-        if: github.event_name == 'push'
-        run: |
-          git fetch --tags --force origin
-          git checkout v${{ needs.prepare.outputs.version }}
+          ref: ${{ needs.prepare.outputs.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
