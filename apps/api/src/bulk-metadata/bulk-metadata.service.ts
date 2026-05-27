@@ -11,6 +11,7 @@ import { BooksService } from '../books/books.service';
 import type { MetadataResult } from '../metadata/interfaces/metadata-result.interface';
 import type { FieldConfigItemDto, GuidedSelectionDto } from './dto';
 import { sleep } from '../utils/sleep';
+import { Prisma } from '@prisma/client';
 
 const FIELD_CONFIG_KEY = 'metadata_field_config';
 const THROTTLE_KEY = 'metadata_match_throttle_ms';
@@ -193,18 +194,32 @@ export class BulkMetadataService {
       opts.bookIds,
     );
 
-    const task = await this.prisma.task.create({
-      data: {
-        type: 'BULK_METADATA_MATCH',
-        status: 'PENDING',
-        payload: JSON.stringify({ processed: 0, total: bookIds.length }),
-      },
-    });
-
-    // Fire and forget — runs in background
-    void this.runBulkEnrichment(task.id, bookIds, opts);
-
-    return { taskId: task.id, total: bookIds.length };
+    try {
+      const task = await this.prisma.task.create({
+        data: {
+          type: 'BULK_METADATA_MATCH',
+          status: 'PENDING',
+          payload: JSON.stringify({ processed: 0, total: bookIds.length }),
+        },
+      });
+      void this.runBulkEnrichment(task.id, bookIds, opts);
+      return { taskId: task.id, total: bookIds.length };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existing = await this.prisma.task.findFirst({
+          where: {
+            type: 'BULK_METADATA_MATCH',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (existing) return { taskId: existing.id, total: bookIds.length };
+      }
+      throw err;
+    }
   }
 
   async getRecentTasks(limit = 20) {

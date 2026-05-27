@@ -22,6 +22,7 @@ import { DiskWriteGuardService } from '../common/disk-write-guard.service';
 import { BooksService } from '../books/books.service';
 import { LibraryWriteService } from '../library/library-write.service';
 import { SeriesService } from '../series/series.service';
+import { Prisma } from '@prisma/client';
 
 const BULK_SIDECAR_CONCURRENCY = 10;
 
@@ -269,22 +270,37 @@ export class AdminService {
   }
 
   async bulkEnrichSeries(): Promise<{ taskId: string }> {
-    const task = await this.prisma.task.create({
-      data: {
-        type: 'SERIES_BULK_ENRICH',
-        status: 'PENDING',
-        payload: JSON.stringify({
-          total: 0,
-          completed: 0,
-          failed: 0,
-          currentSeries: null,
-        }),
-      },
-    });
-
-    void this.runBulkEnrichSeries(task.id);
-
-    return { taskId: task.id };
+    try {
+      const task = await this.prisma.task.create({
+        data: {
+          type: 'SERIES_BULK_ENRICH',
+          status: 'PENDING',
+          payload: JSON.stringify({
+            total: 0,
+            completed: 0,
+            failed: 0,
+            currentSeries: null,
+          }),
+        },
+      });
+      void this.runBulkEnrichSeries(task.id);
+      return { taskId: task.id };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existing = await this.prisma.task.findFirst({
+          where: {
+            type: 'SERIES_BULK_ENRICH',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (existing) return { taskId: existing.id };
+      }
+      throw err;
+    }
   }
 
   private async runBulkEnrichSeries(taskId: string): Promise<void> {
@@ -366,17 +382,32 @@ export class AdminService {
       orderBy: { title: 'asc' },
     });
 
-    const task = await this.prisma.task.create({
-      data: {
-        type: 'BULK_SIDECAR_WRITE',
-        status: 'PENDING',
-        payload: JSON.stringify({ processed: 0, total: books.length }),
-      },
-    });
-
-    void this.runBulkSidecarWrite(task.id, books);
-
-    return { taskId: task.id };
+    try {
+      const task = await this.prisma.task.create({
+        data: {
+          type: 'BULK_SIDECAR_WRITE',
+          status: 'PENDING',
+          payload: JSON.stringify({ processed: 0, total: books.length }),
+        },
+      });
+      void this.runBulkSidecarWrite(task.id, books);
+      return { taskId: task.id };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existing = await this.prisma.task.findFirst({
+          where: {
+            type: 'BULK_SIDECAR_WRITE',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (existing) return { taskId: existing.id };
+      }
+      throw err;
+    }
   }
 
   async previewReorganize(): Promise<{
@@ -604,20 +635,40 @@ export class AdminService {
       }),
     ]);
 
-    const task = await this.prisma.task.create({
-      data: {
-        type: 'LIBRARY_REORGANIZE',
-        status: 'PENDING',
-        payload: JSON.stringify({
-          processed: 0,
-          total: files.length + audiobookBooks.length,
-        }),
-      },
-    });
-
-    void this.runLibraryReorganize(task.id, files, audiobookBooks, libraryRoot);
-
-    return { taskId: task.id };
+    try {
+      const task = await this.prisma.task.create({
+        data: {
+          type: 'LIBRARY_REORGANIZE',
+          status: 'PENDING',
+          payload: JSON.stringify({
+            processed: 0,
+            total: files.length + audiobookBooks.length,
+          }),
+        },
+      });
+      void this.runLibraryReorganize(
+        task.id,
+        files,
+        audiobookBooks,
+        libraryRoot,
+      );
+      return { taskId: task.id };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const existing = await this.prisma.task.findFirst({
+          where: {
+            type: 'LIBRARY_REORGANIZE',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (existing) return { taskId: existing.id };
+      }
+      throw err;
+    }
   }
 
   private async runLibraryReorganize(
