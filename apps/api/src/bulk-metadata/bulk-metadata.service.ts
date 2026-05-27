@@ -210,7 +210,10 @@ export class BulkMetadataService {
         err.code === 'P2002'
       ) {
         const existing = await this.prisma.task.findFirst({
-          where: { type: 'BULK_METADATA_MATCH', status: { in: ['PENDING', 'PROCESSING'] } },
+          where: {
+            type: 'BULK_METADATA_MATCH',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
           orderBy: { createdAt: 'desc' },
         });
         if (existing) return { taskId: existing.id, total: bookIds.length };

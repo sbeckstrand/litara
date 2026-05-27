@@ -106,7 +106,10 @@ export class LibraryScannerService implements OnModuleInit, OnModuleDestroy {
         err.code === 'P2002'
       ) {
         const existing = await this.prisma.task.findFirst({
-          where: { type: 'LIBRARY_SCAN', status: { in: ['PENDING', 'PROCESSING'] } },
+          where: {
+            type: 'LIBRARY_SCAN',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
           orderBy: { createdAt: 'desc' },
         });
         if (existing) {

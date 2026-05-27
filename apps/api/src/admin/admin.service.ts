@@ -291,7 +291,10 @@ export class AdminService {
         err.code === 'P2002'
       ) {
         const existing = await this.prisma.task.findFirst({
-          where: { type: 'SERIES_BULK_ENRICH', status: { in: ['PENDING', 'PROCESSING'] } },
+          where: {
+            type: 'SERIES_BULK_ENRICH',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
           orderBy: { createdAt: 'desc' },
         });
         if (existing) return { taskId: existing.id };
@@ -395,7 +398,10 @@ export class AdminService {
         err.code === 'P2002'
       ) {
         const existing = await this.prisma.task.findFirst({
-          where: { type: 'BULK_SIDECAR_WRITE', status: { in: ['PENDING', 'PROCESSING'] } },
+          where: {
+            type: 'BULK_SIDECAR_WRITE',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
           orderBy: { createdAt: 'desc' },
         });
         if (existing) return { taskId: existing.id };
@@ -640,7 +646,12 @@ export class AdminService {
           }),
         },
       });
-      void this.runLibraryReorganize(task.id, files, audiobookBooks, libraryRoot);
+      void this.runLibraryReorganize(
+        task.id,
+        files,
+        audiobookBooks,
+        libraryRoot,
+      );
       return { taskId: task.id };
     } catch (err) {
       if (
@@ -648,7 +659,10 @@ export class AdminService {
         err.code === 'P2002'
       ) {
         const existing = await this.prisma.task.findFirst({
-          where: { type: 'LIBRARY_REORGANIZE', status: { in: ['PENDING', 'PROCESSING'] } },
+          where: {
+            type: 'LIBRARY_REORGANIZE',
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
           orderBy: { createdAt: 'desc' },
         });
         if (existing) return { taskId: existing.id };
