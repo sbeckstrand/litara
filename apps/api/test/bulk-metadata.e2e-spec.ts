@@ -436,6 +436,7 @@ describe('BulkMetadataService (e2e — mocked providers)', () => {
       const { taskId, total } = await startRun({});
       expect(typeof taskId).toBe('string');
       expect(total).toBe(2);
+      await waitForTask(app, adminToken, taskId);
     });
 
     it('completed task appears in task list', async () => {
